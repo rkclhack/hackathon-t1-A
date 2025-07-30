@@ -9,16 +9,16 @@ const userName = inject("userName")
 // #region reactive variable
 const chatContent = ref("")
 const chatList = reactive([])
-const isDescending = ref(true)
+const isNewestFirst = ref(true)
 
 // 並び順に応じたリストを計算
 const sortedChatList = computed(() => {
-  return isDescending.value ? [...chatList].reverse() : [...chatList]
+  return isNewestFirst.value ? [...chatList].reverse() : [...chatList]
 })
 
 // 並び順を切り替える
 const toggleSortOrder = () => {
-  isDescending.value = !isDescending.value
+  isNewestFirst.value = !isNewestFirst.value
 }
 // #endregion
 
@@ -107,7 +107,7 @@ const registerSocketEvent = () => {
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
         <button class="button-normal util-ml-8px" @click="toggleSortOrder">
-          {{ isDescending ? "古い順にする" : "新しい順にする" }}
+          {{ isNewestFirst ? "古い順にする" : "新しい順にする" }}
         </button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
