@@ -11,7 +11,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [vue(), socketIoPlugin({ socketEvents })],
     server: {
       host: true,
-      port: parseInt(env.PORT) || 3000,
+      //port: parseInt(env.PORT) || 3000,
+      port: parseInt(env.PORT) || 3007,
       strictPort: true,
       https: { // HTTPS設定を追加
         key: fs.readFileSync("/etc/ssl/private.key"), // 秘密鍵のパス
