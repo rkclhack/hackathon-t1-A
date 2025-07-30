@@ -1,13 +1,9 @@
 <script setup>
 import { inject, ref, reactive, onMounted, computed } from "vue"
-import socketManager from '../socketManager.js'
+import ChatService from '../services/ChatService.js'
 
 // #region global state
 const userName = inject("userName")
-// #endregion
-
-// #region local variable
-const socket = socketManager.getInstance()
 // #endregion
 
 // #region reactive variable
@@ -25,13 +21,13 @@ onMounted(() => {
 // #region browser event handler
 // 投稿メッセージをサーバに送信する
 const onPublish = () =>  {
-  socket.emit("publishEvent", {message:chatContent.value, publisherName:userName.value})
+  ChatService.publish(chatContent.value, userName.value)
   chatContent.value = ""
 }
 
 // 退室メッセージをサーバに送信する
 const onExit = () => {
-  socket.emit("exitEvent", userName.value)
+  ChatService.exit(userName.value)
 }
 
 // メモを画面上に表示する
@@ -66,17 +62,17 @@ const onReceivePublish = (data) => {
 // イベント登録をまとめる
 const registerSocketEvent = () => {
   // 入室イベントを受け取ったら実行
-  socket.on("enterEvent", (data) => {
+  ChatService.onEnter((data) => {
     onReceiveEnter(data)
   })
 
   // 退室イベントを受け取ったら実行
-  socket.on("exitEvent", (data) => {
+  ChatService.onExit((data) => {
     onReceiveExit(data)
   })
 
   // 投稿イベントを受け取ったら実行
-  socket.on("publishEvent", (data) => {
+  ChatService.onPublish((data) => {
     onReceivePublish(data)
   })
 }
