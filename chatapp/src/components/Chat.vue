@@ -1,6 +1,7 @@
 <script setup>
 import { inject, ref, reactive, onMounted, computed } from "vue"
 import ChatService from '../services/ChatService.js'
+import AuthService from '../services/AuthService.js'
 
 // #region global state
 const userName = inject("userName")
@@ -34,6 +35,11 @@ const onPublish = async () =>  {
 const onExit = async () => {
   try {
     await ChatService.exit(userName.value)
+    
+    // Firebase認証済みユーザーの場合はサインアウトも実行
+    if (AuthService.isAuthenticated()) {
+      await AuthService.signOut()
+    }
   } catch (error) {
     console.error('退室処理でエラーが発生しました:', error)
     // 退室時のエラーは画面遷移を妨げないようにする
