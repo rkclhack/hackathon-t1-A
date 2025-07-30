@@ -99,7 +99,15 @@ const registerSocketEvent = () => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in reversedChatList" :key="i">{{ chat }}</li>
+          <li class="chat-item" v-for="(chatString, i) in reversedChatList" :key="i">
+            <template v-if="chatString.includes(':')">
+              <span class="chat-publisher">{{ chatString.substring(0, chatString.indexOf(':') + 1) }}</span>
+              <span class="chat-content chat-message-display">{{ chatString.substring(chatString.indexOf(':') + 1) }}</span>
+            </template>
+            <template v-else>
+              <span class="chat-content chat-message-display">{{ chatString }}</span>
+            </template>
+          </li>
         </ul>
       </div>
     </div>
@@ -120,9 +128,32 @@ const registerSocketEvent = () => {
   margin-top: 8px;
 }
 
-.item {
+/* === 追加 === */
+.chat-item {
+  display: flex; /* Flexboxコンテナにする */
+  align-items: flex-start; /* アイテムを上端に揃える */
+  margin-top: 16px; /* item mt-4 の代わりに直接マージンを設定 */
+}
+
+.chat-publisher {
+  flex-shrink: 0; /* 投稿者名が縮まないようにする */
+  margin-right: 5px; /* 投稿者名とメッセージの間に少しスペース */
   display: block;
 }
+
+.chat-content {
+  flex-grow: 1; /* 残りのスペースを全て占有させる */
+  min-width: 0; /* 内容がはみ出さないようにする*/
+  display: block;
+}
+
+.chat-message-display { /*改行*/
+  white-space: pre-wrap;
+  word-wrap: break-word; 
+  overflow-wrap: break-word; 
+}
+/*===ここまで追加===*/
+
 
 .util-ml-8px {
   margin-left: 8px;
