@@ -21,10 +21,14 @@ onMounted(() => {
 })
 // #endregion
 
+// チャットリストを逆順に
+
+
 // #region browser event handler
 // 投稿メッセージをサーバに送信する
 const onPublish = () =>  {
-  socket.emit("publishEvent", chatContent.value)
+  socket.emit("publishEvent", {message:chatContent.value, publisherName:userName.value})
+  chatContent.value = ""
 }
 
 // 退室メッセージをサーバに送信する
@@ -34,10 +38,9 @@ const onExit = () => {
 
 // メモを画面上に表示する
 const onMemo = () => {
-  // メモの内容を表示
-
-  // 入力欄を初期化
-
+  const memoMessage = `${userName.value}さんのメモ:${chatContent.value}`
+  chatList.push(memoMessage)
+  chatContent.value = ""
 }
 // #endregion
 
@@ -56,7 +59,8 @@ const onReceiveExit = (data) => {
 
 // サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
-  chatList.unshift(data)
+  const publishMessage = `${data.publisherName}さん:${data.message}`
+  chatList.push(publishMessage)
 }
 // #endregion
 
@@ -89,11 +93,11 @@ const registerSocketEvent = () => {
       <textarea variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area" type="text" v-model="chatContent"></textarea>
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
-        <button class="button-normal util-ml-8px">メモ</button>
+        <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i">{{ chat }}</li>
+          <li class="item mt-4" v-for="(chat, i) in chatList.reverse()" :key="i">{{ chat }}</li>
         </ul>
       </div>
     </div>
