@@ -10,6 +10,7 @@ const onClick = () => {
   このメッセージはすべてのクライアントに送信されます。
   `)
   // メッセージ入力イベント（sendMessageEvent）を送信する
+  socket.emit("sendMessageEvent",message)
 
 }
 
@@ -24,7 +25,7 @@ onMounted(() => {
   })
 
   // 自クライアント以外の接続イベント（enterOtherEvent）を受信する
-  socket.on("enterOtherEvent", (data) => {
+  socket.on("receiveMessageEvent", (data) => {
     // 画面上にメッセージを表示
     messages.unshift(data)
   })
