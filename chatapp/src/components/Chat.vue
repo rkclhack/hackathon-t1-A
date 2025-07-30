@@ -76,6 +76,14 @@ const registerSocketEvent = () => {
     onReceivePublish(data)
   })
 }
+
+  // CtrlあるいはCommandキーとEnter同時押しで送信
+  const handleKeydownEnter = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      onPublish()
+    }
+  }
+
 // #endregion
 </script>
 
@@ -84,7 +92,7 @@ const registerSocketEvent = () => {
     <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
-      <textarea variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area" type="text" v-model="chatContent"></textarea>
+      <textarea variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area" type="text" v-model="chatContent" @keydown.enter="handleKeydownEnter"></textarea>
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
