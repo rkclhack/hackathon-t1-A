@@ -2,6 +2,20 @@
 
 チャットアプリのソースコード
 
+## 環境設定
+
+### Firebase設定ファイルの作成
+
+1. `.env.example`ファイルを`.env`にコピーします
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. `.env`ファイルを編集します
+
+   - 各値を`.env`ファイルの対応する項目に入力
+
 ## アプリの起動
 
 1. 次のコマンドを実行します
@@ -18,6 +32,16 @@
 2. `http://サーバのIPアドレス:ポート番号/` にブラウザでアクセスします
 
    例：`http://127.0.0.1:3000/`
+
+## 本番デプロイ
+
+```bash
+# 本番用ビルド
+npm run build
+
+# Firebase Hostingにデプロイ
+npx firebase deploy --only hosting
+```
 
 ## 機能
 
