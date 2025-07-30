@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref, reactive, onMounted } from "vue"
+import { inject, ref, reactive, onMounted, computed } from "vue"
 import socketManager from '../socketManager.js'
 
 // #region global state
@@ -13,6 +13,7 @@ const socket = socketManager.getInstance()
 // #region reactive variable
 const chatContent = ref("")
 const chatList = reactive([])
+const reversedChatList = computed(() => [...chatList].reverse())
 // #endregion
 
 // #region lifecycle
@@ -20,9 +21,6 @@ onMounted(() => {
   registerSocketEvent()
 })
 // #endregion
-
-// チャットリストを逆順に
-
 
 // #region browser event handler
 // 投稿メッセージをサーバに送信する
@@ -97,7 +95,7 @@ const registerSocketEvent = () => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList.reverse()" :key="i">{{ chat }}</li>
+          <li class="item mt-4" v-for="(chat, i) in reversedChatList" :key="i">{{ chat }}</li>
         </ul>
       </div>
     </div>
