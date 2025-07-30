@@ -17,20 +17,26 @@ const inputUserName = ref("")
 
 // #region browser event handler
 // 入室メッセージをクライアントに送信する
-const onEnter = () => {
+const onEnter = async () => {
   // ユーザー名が入力されているかチェック
   if (!inputUserName.value) {
     alert("ユーザー名を入力してください。")
     return
   }
-  // 入室メッセージを送信
-  ChatService.enter(inputUserName.value)
+  
+  try {
+    // 入室メッセージを送信
+    await ChatService.enter(inputUserName.value)
 
-  // 全体で使用するnameに入力されたユーザー名を格納
-  userName.value = inputUserName.value
+    // 全体で使用するnameに入力されたユーザー名を格納
+    userName.value = inputUserName.value
 
-  // チャット画面へ遷移
-  router.push({ name: "chat" })
+    // チャット画面へ遷移
+    router.push({ name: "chat" })
+  } catch (error) {
+    console.error('入室処理でエラーが発生しました:', error)
+    alert('入室に失敗しました。もう一度お試しください。')
+  }
 }
 // #endregion
 </script>

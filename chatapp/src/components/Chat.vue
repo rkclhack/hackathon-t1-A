@@ -20,14 +20,24 @@ onMounted(() => {
 
 // #region browser event handler
 // 投稿メッセージをサーバに送信する
-const onPublish = () =>  {
-  ChatService.publish(chatContent.value, userName.value)
-  chatContent.value = ""
+const onPublish = async () =>  {
+  try {
+    await ChatService.publish(chatContent.value, userName.value)
+    chatContent.value = ""
+  } catch (error) {
+    console.error('メッセージの投稿に失敗しました:', error)
+    alert('メッセージの投稿に失敗しました。もう一度お試しください。')
+  }
 }
 
 // 退室メッセージをサーバに送信する
-const onExit = () => {
-  ChatService.exit(userName.value)
+const onExit = async () => {
+  try {
+    await ChatService.exit(userName.value)
+  } catch (error) {
+    console.error('退室処理でエラーが発生しました:', error)
+    // 退室時のエラーは画面遷移を妨げないようにする
+  }
 }
 
 // メモを画面上に表示する
