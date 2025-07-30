@@ -9,7 +9,17 @@ const userName = inject("userName")
 // #region reactive variable
 const chatContent = ref("")
 const chatList = reactive([])
-const reversedChatList = computed(() => [...chatList].reverse())
+const isDescending = ref(true)
+
+// 並び順に応じたリストを計算
+const sortedChatList = computed(() => {
+  return isDescending.value ? [...chatList].reverse() : [...chatList]
+})
+
+// 並び順を切り替える
+const toggleSortOrder = () => {
+  isDescending.value = !isDescending.value
+}
 // #endregion
 
 // #region lifecycle
@@ -96,10 +106,13 @@ const registerSocketEvent = () => {
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
+        <button class="button-normal util-ml-8px" @click="toggleSortOrder">
+          {{ isDescending ? "古い順にする" : "新しい順にする" }}
+        </button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="chat-item" v-for="(chatString, i) in reversedChatList" :key="i">
+          <li class="chat-item" v-for="(chatString, i) in sortedChatList" :key="i">
             <template v-if="chatString.includes(':')">
               <span class="chat-publisher">{{ chatString.substring(0, chatString.indexOf(':') + 1) }}</span>
               <span class="chat-content chat-message-display">{{ chatString.substring(chatString.indexOf(':') + 1) }}</span>
