@@ -27,7 +27,10 @@ const toggleSortOrder = () => {
 // #endregion
 
 // #region lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // 最初に過去のメッセージを全て取得
+  await loadInitialMessages()
+  // その後リアルタイム監視を開始
   registerSocketEvent()
 })
 // #endregion
@@ -98,14 +101,24 @@ const onReceivePublish = (data) => {
     userID: data.userID,
     channelID: data.channelID,
     tag: data.tag || [],
-    imageUrl: data.imageUrl || null,
-    type: 'message'
+    imageUrl: data.imageUrl || null
   }
   chatList.push(messageObj)
 }
 // #endregion
 
 // #region local methods
+// 初期メッセージを取得してchatListに設定
+const loadInitialMessages = async () => {
+  try {
+    const initialMessages = await ChatService.getInitialMessages()
+    chatList.push(...initialMessages)
+    console.log(chatList)
+  } catch (error) {
+    console.error('初期メッセージの読み込みに失敗しました:', error)
+  }
+}
+
 // イベント登録をまとめる
 const registerSocketEvent = () => {
 
