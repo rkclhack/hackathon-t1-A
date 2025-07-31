@@ -118,10 +118,19 @@ const resetSearchForm = () => {
   searchChannel.value = ""
 }
 
+// 並び順に応じたリストを計算
+const sortedChatList = computed(() => {
+  return isNewestFirst.value ? [...chatList].reverse() : [...chatList]
+})
 
+// 並び順を切り替える
+const toggleSortOrder = () => {
+  isNewestFirst.value = !isNewestFirst.value
+}
 
 // チャンネルを切り替える
 const switchChannel = (channelId) => {
+  console.log('チャンネル切り替え:', channelId)
   if (currentChannel.value !== channelId) {
     currentChannel.value = channelId
   }
@@ -291,7 +300,11 @@ const handleKeydownEnter = (e) => {
     onPublish()
   }
 }
-// #endregion
+
+// 選択されたチャンネルでフィルタリング
+const filteredChatList = computed(() => {
+  return chatList.filter(chat => chat.channelID === currentChannel.value);
+});
 </script>
 
 <template>
