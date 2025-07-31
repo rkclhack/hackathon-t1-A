@@ -104,23 +104,23 @@ class ChatService {
    * @param {string} publisherName - 投稿者名
    * @param {string|null} imageUrl - 画像のURL（オプション）
    */
-  async publish(message, publisherName, imageUrl = null, tags = [], channelID = 0) {
+  async publish(messageObj) {
     try {
       // AuthServiceからユーザーIDを取得
       const currentUser = AuthService.getCurrentUser()
       const userID = currentUser ? currentUser.uid : null
 
       const messageData = {
-        message: message,
-        publisherName: publisherName,
+        message: messageObj.message,
+        publisherName: messageObj.publisherName,
         userID: userID,
-        channelID: channelID,
-        tag: tags,
+        channelID: messageObj.channelID,
+        tag: messageObj.tags,
         timestamp: serverTimestamp()
       }
 
       // 画像URLがある場合は追加
-      if (imageUrl) {
+      if (messageObj.imageUrl) {
         messageData.imageUrl = imageUrl
       }
 
