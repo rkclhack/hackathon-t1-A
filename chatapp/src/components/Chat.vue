@@ -272,6 +272,11 @@ const handleKeydownEnter = (e) => {
                   <div v-if="chat.imageUrl" class="message-image">
                     <img :src="chat.imageUrl" alt="アップロード画像" class="uploaded-image" />
                   </div>
+                  <div v-if="chat.tag && chat.tag.length > 0" class="message-tags">
+                    <span v-for="tag in chat.tag" :key="tag" class="tag-item">
+                      {{ tag }}
+                    </span>
+                  </div>
                 </div>
               </template>
             </li>
