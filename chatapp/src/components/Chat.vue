@@ -1,7 +1,6 @@
 <script setup>
 import { inject, ref, reactive, onMounted, computed } from "vue"
 import ChatService from '../services/ChatService.js'
-import AuthService from '../services/AuthService.js'
 import ImageService from '../services/ImageService.js'
 
 // #region global state
@@ -70,39 +69,6 @@ const onPublish = async () =>  {
   }
 }
 
-// 退室メッセージをサーバに送信する
-const onExit = async () => {
-  try {
-    await ChatService.exit(userName.value)
-    
-    // Firebase認証済みユーザーの場合はサインアウトも実行
-    if (AuthService.isAuthenticated()) {
-      await AuthService.signOut()
-    }
-  } catch (error) {
-    console.error('退室処理でエラーが発生しました:', error)
-    // 退室時のエラーは画面遷移を妨げないようにする
-  }
-}
-
-// メモを画面上に表示する
-const onMemo = () => {
-  // 入力内容をトリム（前後の空白を除去）
-  const trimmedContent = chatContent.value.trim()
-  
-  // 空文字列、スペースのみ、改行のみをチェック
-  if (!trimmedContent || trimmedContent.length === 0) {
-    // オプション: ユーザーにアラートを表示
-    // alert("メモ内容を入力してください")
-    return
-  }
-  
-  const memoMessage = `${userName.value}さんのメモ:${trimmedContent}`
-  chatList.push(memoMessage)
-  chatContent.value = ""
-  resetFileInput()
-}
-
 // 画像ファイル選択処理
 const onImageSelect = (event) => {
   const file = event.target.files[0]
@@ -120,17 +86,8 @@ const resetFileInput = () => {
 }
 // #endregion
 
-// #region socket event handler
-// サーバから受信した入室メッセージ画面上に表示する
-const onReceiveEnter = (data) => {
-  const message = `${data}さんが入室しました。`
-  chatList.push(message)
-}
-
-// サーバから受信した退室メッセージを受け取り画面上に表示する
-const onReceiveExit = (data) => {
-  const message = `${data}さんが退室しました。`
-  chatList.push(message)
+const onExit = () => {
+  router.push('/')
 }
 
 // サーバから受信した投稿メッセージを画面上に表示する
@@ -151,15 +108,6 @@ const onReceivePublish = (data) => {
 // #region local methods
 // イベント登録をまとめる
 const registerSocketEvent = () => {
-  // 入室イベントを受け取ったら実行
-  ChatService.onEnter((data) => {
-    onReceiveEnter(data)
-  })
-
-  // 退室イベントを受け取ったら実行
-  ChatService.onExit((data) => {
-    onReceiveExit(data)
-  })
 
   // 投稿イベントを受け取ったら実行
   ChatService.onPublish((data) => {
@@ -205,7 +153,7 @@ const registerSocketEvent = () => {
         >
           {{ isUploading ? 'アップロード中...' : '投稿' }}
         </button>
-        <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
+
         <button class="button-normal util-ml-8px" @click="toggleSortOrder">
           {{ isNewestFirst ? "古い順にする" : "新しい順にする" }}
         </button>
