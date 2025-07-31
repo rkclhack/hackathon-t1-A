@@ -1,61 +1,135 @@
-import socketManager from '../socketManager.js'
+import { db } from '../firebase.js'
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  serverTimestamp,
+  doc,
+  setDoc,
+  deleteDoc
+} from 'firebase/firestore'
 
 /**
  * チャット通信を担うサービスクラス
- * バックエンドの実装詳細（Socket.io）を隠蔽し、
- * 将来Firebase Storeなどに切り替える際の影響を最小限にする
+ * Firestoreを使用してリアルタイムチャット機能を提供
+ * Socket.ioと同じAPIインターフェースを維持して、既存コンポーネントとの互換性を保つ
  */
 class ChatService {
   constructor() {
-    this.socket = socketManager.getInstance()
     this.eventHandlers = {
       enter: [],
       exit: [],
       publish: []
     }
-    this.initializeSocketListeners()
+    this.unsubscribers = []
+    this.initializeFirestoreListeners()
   }
 
   /**
-   * Socket.ioのイベントリスナーを初期化
+   * Firestoreのリスナーを初期化
    */
-  initializeSocketListeners() {
-    this.socket.on("enterEvent", (data) => {
-      this.eventHandlers.enter.forEach(handler => handler(data))
+  initializeFirestoreListeners() {
+    // メッセージコレクションを監視
+    const messagesRef = collection(db, 'messages')
+    const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'))
+    
+    const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data()
+          
+          // メッセージタイプに応じて適切なハンドラーを呼び出し
+          switch (data.type) {
+            case 'enter':
+              this.eventHandlers.enter.forEach(handler => handler(data.userName))
+              break
+            case 'exit':
+              this.eventHandlers.exit.forEach(handler => handler(data.userName))
+              break
+            case 'message':
+              this.eventHandlers.publish.forEach(handler => handler({
+                message: data.message,
+                publisherName: data.publisherName,
+                imageUrl: data.imageUrl || null
+              }))
+              break
+          }
+        }
+      })
     })
-
-    this.socket.on("exitEvent", (data) => {
-      this.eventHandlers.exit.forEach(handler => handler(data))
-    })
-
-    this.socket.on("publishEvent", (data) => {
-      this.eventHandlers.publish.forEach(handler => handler(data))
-    })
+    
+    this.unsubscribers.push(unsubscribeMessages)
   }
 
   /**
    * 入室処理
    * @param {string} userName - ユーザー名
    */
-  enter(userName) {
-    this.socket.emit("enterEvent", userName)
+  async enter(userName) {
+    try {
+      // 入室メッセージをFirestoreに追加
+      await addDoc(collection(db, 'messages'), {
+        type: 'enter',
+        userName: userName,
+        timestamp: serverTimestamp()
+      })
+      
+      // アクティブユーザーリストに追加
+      await setDoc(doc(db, 'activeUsers', userName), {
+        userName: userName,
+        joinedAt: serverTimestamp()
+      })
+    } catch (error) {
+      console.error('入室処理でエラーが発生しました:', error)
+    }
   }
 
   /**
    * 退室処理
    * @param {string} userName - ユーザー名
    */
-  exit(userName) {
-    this.socket.emit("exitEvent", userName)
+  async exit(userName) {
+    try {
+      // 退室メッセージをFirestoreに追加
+      await addDoc(collection(db, 'messages'), {
+        type: 'exit',
+        userName: userName,
+        timestamp: serverTimestamp()
+      })
+      
+      // アクティブユーザーリストから削除
+      await deleteDoc(doc(db, 'activeUsers', userName))
+    } catch (error) {
+      console.error('退室処理でエラーが発生しました:', error)
+    }
   }
 
   /**
    * メッセージ投稿処理
    * @param {string} message - メッセージ内容
    * @param {string} publisherName - 投稿者名
+   * @param {string|null} imageUrl - 画像のURL（オプション）
    */
-  publish(message, publisherName) {
-    this.socket.emit("publishEvent", { message, publisherName })
+  async publish(message, publisherName, imageUrl = null) {
+    try {
+      const messageData = {
+        type: 'message',
+        message: message,
+        publisherName: publisherName,
+        timestamp: serverTimestamp()
+      }
+      
+      // 画像URLがある場合は追加
+      if (imageUrl) {
+        messageData.imageUrl = imageUrl
+      }
+      
+      await addDoc(collection(db, 'messages'), messageData)
+    } catch (error) {
+      console.error('メッセージ投稿でエラーが発生しました:', error)
+    }
   }
 
   /**
@@ -80,6 +154,19 @@ class ChatService {
    */
   onPublish(handler) {
     this.eventHandlers.publish.push(handler)
+  }
+
+  /**
+   * リスナーのクリーンアップ
+   */
+  cleanup() {
+    this.unsubscribers.forEach(unsubscribe => unsubscribe())
+    this.unsubscribers = []
+    this.eventHandlers = {
+      enter: [],
+      exit: [],
+      publish: []
+    }
   }
 }
 

@@ -10,7 +10,6 @@ const onClick = () => {
   このメッセージはすべてのクライアントに送信されます。
   `)
   // メッセージ入力イベント（sendMessageEvent）を送信する
-  socket.emit("sendMessageEvent", message)
 
 }
 
@@ -31,9 +30,9 @@ onMounted(() => {
   })
 
   // メッセージ表示イベント（receiveMessageEvent）を受信する
-  socket.on("receiveMessageEvent", (data) => {
+  socket.on("", (data) => {
     // 画面上にメッセージを表示
-    messages.unshift(data)
+    messages.unshift()
   })
 })
 </script>

@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Firebase Storage用のセキュリティルール
+service firebase.storage {
+  match /b/{bucket}/o {
+    // chat-imagesフォルダへの書き込み（認証済みユーザーのみ）
+    match /chat-images/{allPaths=**} {
+      // 認証済みユーザーのみアップロード可能
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024  // 5MB以下
+                   && request.resource.contentType.matches('image/.*');  // 画像ファイルのみ
+      
+      // 誰でも読み取り可能（チャット画像を表示するため）
+      allow read: if true;
+    }
+  }
+}
