@@ -57,7 +57,7 @@ const onPublish = async () =>  {
     
     // メッセージまたは画像のいずれかがある場合のみ送信
     if (trimmedContent || imageUrl) {
-      await ChatService.publish(trimmedContent, userName.value, imageUrl)
+      await ChatService.publish(trimmedContent, userName.value, imageUrl, [], 0)
       chatContent.value = ""
       resetFileInput()
     }
@@ -95,6 +95,9 @@ const onReceivePublish = (data) => {
   const messageObj = {
     publisherName: data.publisherName,
     message: data.message,
+    userID: data.userID,
+    channelID: data.channelID,
+    tag: data.tag || [],
     imageUrl: data.imageUrl || null,
     type: 'message'
   }
