@@ -19,19 +19,28 @@ const isUploading = ref(false)
 const fileInput = ref(null)
 const expirationDate = ref("")
 
-// タグ選択機能（develop版から継承）
+// タグ選択を追加
 const selectedTags = ref([])
-const currentChannel = ref(0)
 
-// サイドバー・チャンネル機能（ui_test版デザインを採用、develop版のチャンネルIDに合わせる）
+// 詳細検索用の変数を追加
+const searchDialog = ref(false)
+const searchKeyword = ref("")
+const searchTags = ref([])
+const searchDateFrom = ref("")
+const searchDateTo = ref("")
+const searchChannel = ref("")
+
+// サイドバー・チャンネル機能
 const isSidebarOpen = ref(true)
 const channels = ref([
-  { id: 0, name: "引継ぎ", description: "引継ぎ事項", icon: "📋", color: "#28a745" },
-  { id: 1, name: "シフト", description: "シフト調整", icon: "📅", color: "#007bff" },
-  { id: 2, name: "業務連絡", description: "業務に関する連絡", icon: "📢", color: "#ffc107" }
+  { id: "general", name: "一般", description: "全般的な話題", icon: "💬", color: "#28a745" },
+  { id: "tech", name: "技術", description: "技術的な話題", icon: "💻", color: "#007bff" },
+  { id: "random", name: "雑談", description: "自由な雑談", icon: "🎉", color: "#ffc107" },
+  { id: "announcement", name: "お知らせ", description: "重要なお知らせ", icon: "📢", color: "#dc3545" }
 ])
 
-// 利用可能なタグリスト（develop版から継承）
+// 利用可能なタグリスト
+const currentChannel = ref(0)
 const availableTags = ref([
   'お知らせ',
   '出欠',
@@ -42,26 +51,51 @@ const availableTags = ref([
   '★★★'
 ])
 
-// 現在のチャンネル情報を取得
+// 詳細検索実行
+const executeDetailedSearch = () => {
+  console.log('詳細検索実行:', {
+    keyword: searchKeyword.value,
+    tags: searchTags.value,
+    dateFrom: searchDateFrom.value,
+    dateTo: searchDateTo.value,
+    channel: searchChannel.value
+  })
+  // ここで実際の検索処理を実装
+  searchDialog.value = false
+}
+
+// 検索条件をリセット
+const resetSearchForm = () => {
+  searchKeyword.value = ""
+  searchTags.value = []
+  searchDateFrom.value = ""
+  searchDateTo.value = ""
+  searchChannel.value = ""
+}
+
+// チャンネル別のメッセージを管理
+const channelMessages = reactive({
+  general: [],
+  tech: [],
+  random: [],
+  announcement: []
+})
+
+// 現在のチャンネルのメッセージを計算
+const currentChannelMessages = computed(() => {
+  return channelMessages[currentChannel.value] || []
+})
+
+// 現在のチャンネル情報を取得（安全性を向上）
 const getCurrentChannelInfo = computed(() => {
   return channels.value.find(ch => ch.id === currentChannel.value) || {
-    id: 0,
-    name: "引継ぎ",
-    description: "引継ぎ事項",
-    icon: "📋",
+    id: "general",
+    name: "一般",
+    description: "全般的な話題",
+    icon: "💬",
     color: "#28a745"
   }
 })
-
-// 並び順に応じたリストを計算
-const sortedChatList = computed(() => {
-  return isNewestFirst.value ? [...chatList].reverse() : [...chatList]
-})
-
-// 並び順を切り替える
-const toggleSortOrder = () => {
-  isNewestFirst.value = !isNewestFirst.value
-}
 
 // チャンネルを切り替える
 const switchChannel = (channelId) => {
@@ -74,18 +108,31 @@ const switchChannel = (channelId) => {
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
 }
+
+// 並び順に応じたリストを計算（チャンネル別メッセージを使用）
+const sortedChatList = computed(() => {
+  const messages = currentChannelMessages.value || []
+  return isNewestFirst.value ? [...messages].reverse() : [...messages]
+})
+
+// 並び順を切り替える
+const toggleSortOrder = () => {
+  isNewestFirst.value = !isNewestFirst.value
+}
 // #endregion
 
 // #region lifecycle
 onMounted(async () => {
+  // 最初に過去のメッセージを全て取得
   await loadInitialMessages()
+  // その後リアルタイム監視を開始
   registerSocketEvent()
 })
 // #endregion
 
 // #region browser event handler
 
-// タグを選択（develop版から継承）
+// タグを選択
 const toggleTag = (tag) => {
   const index = selectedTags.value.indexOf(tag)
   if (index === -1) {
@@ -94,8 +141,7 @@ const toggleTag = (tag) => {
     selectedTags.value.splice(index, 1)
   }
 }
-
-// 投稿メッセージをサーバに送信する（develop版のタグ機能を使用）
+// 投稿メッセージをサーバに送信する
 const onPublish = async () => {
   try {
     isUploading.value = true
@@ -106,7 +152,8 @@ const onPublish = async () => {
       imageUrl = await ImageService.uploadImage(selectedImage.value, userName.value)
     }
 
-    const trimmedContent = chatContent.value.trim()
+    const content = chatContent.value
+    const trimmedContent = content.trim()
 
     // バリデーション：トリム後が空の場合をチェック
     if (!trimmedContent || trimmedContent.length === 0) {
@@ -115,10 +162,23 @@ const onPublish = async () => {
       }
     }
 
-    // メッセージまたは画像のいずれかがある場合のみ送信（develop版）
-    if (trimmedContent || imageUrl) {
-      await ChatService.publish(trimmedContent, userName.value, imageUrl, selectedTags.value, currentChannel.value)
-      
+    // 元の入力内容（空白含む）を送信
+    if (content || imageUrl) {
+      // ChatServiceのpublishメソッドの引数を修正
+      await ChatService.publish(content, userName.value, imageUrl,  selectedTags.value, currentChannel.value)
+
+      // チャンネル別メッセージに追加
+      const messageObj = {
+        publisherName: userName.value,
+        message: content,
+        imageUrl: imageUrl,
+        channel: currentChannel.value,
+        tags: selectedTags.value,
+        expirationDate: expirationDate.value,
+        type: 'message'
+      }
+      channelMessages[currentChannel.value].push(messageObj)
+
       chatContent.value = ""
       expirationDate.value = ""
       selectedTags.value = []
@@ -130,6 +190,21 @@ const onPublish = async () => {
   } finally {
     isUploading.value = false
   }
+}
+
+// メモを画面上に表示する
+const onMemo = () => {
+  const content = chatContent.value
+  const trimmedContent = content.trim()
+
+  if (!trimmedContent || trimmedContent.length === 0) {
+    return
+  }
+
+  const memoMessage = `${userName.value}さんのメモ:${content}`
+  channelMessages[currentChannel.value].push(memoMessage)
+  chatContent.value = ""
+  resetFileInput()
 }
 
 // 退室処理
@@ -166,7 +241,27 @@ const resetFileInput = () => {
 // #endregion
 
 // #region socket event handler
-// サーバから受信した投稿メッセージを画面上に表示する（develop版）
+// サーバから受信した入室メッセージを画面上に表示する
+const onReceiveEnter = (data) => {
+  try {
+    const message = `${data.userName || data}さんが${getCurrentChannelInfo.value.name}チャンネルに入室しました。`
+    channelMessages[data.channel || currentChannel.value].push(message)
+  } catch (error) {
+    console.error('入室メッセージ処理エラー:', error)
+  }
+}
+
+// サーバから受信した退室メッセージを受け取り画面上に表示する
+const onReceiveExit = (data) => {
+  try {
+    const message = `${data.userName || data}さんが${getCurrentChannelInfo.value.name}チャンネルから退室しました。`
+    channelMessages[data.channel || currentChannel.value].push(message)
+  } catch (error) {
+    console.error('退室メッセージ処理エラー:', error)
+  }
+}
+
+// サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
   try {
     const messageObj = {
@@ -176,9 +271,14 @@ const onReceivePublish = (data) => {
       channelID: data.channelID,
       tag: data.tag || [],
       imageUrl: data.imageUrl || null,
+      channel: data.channel || 'general',
       type: 'message'
     }
-    chatList.push(messageObj)
+    // 対応するチャンネルに追加
+    const targetChannel = data.channel || 'general'
+    if (channelMessages[targetChannel]) {
+      channelMessages[targetChannel].push(messageObj)
+    }
   } catch (error) {
     console.error('投稿メッセージ処理エラー:', error)
   }
@@ -200,6 +300,7 @@ const loadInitialMessages = async () => {
 // イベント登録をまとめる
 const registerSocketEvent = () => {
   try {
+
     // 投稿イベントを受け取ったら実行
     ChatService.onPublish((data) => {
       onReceivePublish(data)
@@ -221,7 +322,7 @@ const handleKeydownEnter = (e) => {
 
 <template>
   <div class="chat-app">
-    <!-- サイドバー（ui_test版デザインを採用） -->
+    <!-- サイドバー -->
     <div class="sidebar" :class="{ 'sidebar-closed': !isSidebarOpen }">
       <div class="sidebar-header">
         <h3>チャンネル</h3>
@@ -250,8 +351,102 @@ const handleKeydownEnter = (e) => {
       </div>
     </div>
 
-    <!-- メインコンテンツ（ui_test版デザインを採用） -->
+    <!-- メインコンテンツ -->
     <div class="main-content" :class="{ 'main-content-full': !isSidebarOpen }">
+      <div class="search-section">
+        <div class="search-row">
+          <v-combobox 
+            label="ラベル検索" 
+            :items="['California', 'Colorado', 'Florida', 'Georgia', 'Texas', 'Wyoming']"
+            class="search-combobox"
+          ></v-combobox>
+          
+          <!-- 詳細検索ダイアログ -->
+          <v-dialog v-model="searchDialog" max-width="600">
+            <template v-slot:activator="{ props: activatorProps }">
+              <v-btn
+                v-bind="activatorProps"
+                color="primary"
+                variant="outlined"
+                class="search-detail-btn"
+              >
+                詳細検索
+              </v-btn>
+            </template>
+
+            <template v-slot:default="{ isActive }">
+              <v-card title="詳細検索">
+                <v-card-text>
+                  <!-- キーワード検索 -->
+                  <!---<v-text-field-
+                    v-model="searchKeyword"
+                    label="キーワード"
+                    placeholder="メッセージ内容を検索..."
+                    class="mb-3" 
+                  ></v-text-field> -->
+
+                  <!-- タグ選択 -->
+                  <!--<v-select
+                    v-model="searchTags"
+                    :items="availableTags"
+                    label="タグ"
+                    multiple
+                    chips
+                    closable-chips
+                    class="mb-3"
+                  ></v-select> -->
+
+                  <!-- 期間選択 -->
+                  <div class="date-range mb-3">
+                    <v-text-field
+                      v-model="searchDateFrom"
+                      label="開始日"
+                      type="date"
+                      class="mr-2"
+                    ></v-text-field>
+                    <v-text-field
+                      v-model="searchDateTo"
+                      label="終了日"
+                      type="date"
+                    ></v-text-field>
+                  </div>
+
+                  <!-- チャンネル選択 -->
+                  <v-select
+                    v-model="searchChannel"
+                    :items="channels"
+                    item-title="name"
+                    item-value="id"
+                    label="チャンネル"
+                    class="mb-3"
+                  ></v-select>
+                </v-card-text> 
+
+                <v-card-actions>
+                  <v-btn
+                    text="リセット"
+                    variant="outlined"
+                    @click="resetSearchForm"
+                  ></v-btn>
+                  
+                  <v-spacer></v-spacer>
+
+                  <v-btn
+                    text="キャンセル"
+                    @click="isActive.value = false"
+                  ></v-btn>
+                  
+                  <v-btn
+                    text="検索"
+                    color="primary"
+                    @click="executeDetailedSearch"
+                  ></v-btn>
+                </v-card-actions>
+              </v-card>
+            </template>
+          </v-dialog>
+        </div>
+      </div>
       
       <div class="chat-header">
         <div class="current-channel">
@@ -264,7 +459,7 @@ const handleKeydownEnter = (e) => {
       <div class="chat-container">
         <!-- メッセージ表示エリア -->
         <div class="messages-area">
-          <div v-if="chatList.length === 0" class="no-messages">
+          <div v-if="currentChannelMessages.length === 0" class="no-messages">
             <p>{{ getCurrentChannelInfo.icon }} # {{ getCurrentChannelInfo.name }} チャンネルにはまだメッセージがありません</p>
             <p>最初のメッセージを投稿してみましょう！</p>
           </div>
@@ -292,7 +487,6 @@ const handleKeydownEnter = (e) => {
                   <div v-if="chat.imageUrl" class="message-image">
                     <img :src="chat.imageUrl" alt="アップロード画像" class="uploaded-image" />
                   </div>
-                  <!-- タグ表示（develop版から継承） -->
                   <div v-if="chat.tag && chat.tag.length > 0" class="message-tags">
                     <span v-for="tag in chat.tag" :key="tag" class="tag-item">
                       {{ tag }}
@@ -308,24 +502,16 @@ const handleKeydownEnter = (e) => {
         <div class="input-area">
           <p class="user-status">ログインユーザ：{{ userName }}さん</p>
 
-          <!-- タグ選択（develop版から継承） -->
-          <div class="tag-selection">
-            <p>タグ選択:</p>
-            <div class="tag-buttons">
-              <button
-                v-for="tag in availableTags"
-                :key="tag"
-                @click="toggleTag(tag)"
-                :class="{ 'selected': selectedTags.includes(tag) }"
-                class="tag-button"
-                type="button"
-              >
-               {{ tag }}
-              </button>
-           </div>
-            <div v-if="selectedTags.length > 0" class="selected-tags">
-              選択中: {{ selectedTags.join(', ') }}
-            </div>
+          <!-- タグ選択 -->
+          <div class="tag-section">
+            <label>タグ選択:</label>
+            <select multiple v-model="selectedTags" class="tag-select">
+              <option value="announce">お知らせ</option>
+              <option value="attendance">出欠</option>
+              <option value="student">生徒名</option>
+              <option value="teacher">担当教師名</option>
+              <option value="important">重要度</option>
+            </select>
           </div>
 
           <!-- 有効期間選択 -->
@@ -354,6 +540,7 @@ const handleKeydownEnter = (e) => {
             <button class="button-normal button-primary" @click="onPublish" :disabled="isUploading">
               {{ isUploading ? 'アップロード中...' : '投稿' }}
             </button>
+            <button class="button-normal" @click="onMemo">メモ</button>
             <button class="button-normal" @click="toggleSortOrder">
               {{ isNewestFirst ? "古い順" : "新しい順" }}
             </button>
@@ -367,12 +554,15 @@ const handleKeydownEnter = (e) => {
   </div>
 </template>
 
+
 <style scoped>
+
 .chat-app {
   display: flex;
   height: 100vh;
   background-color: #f5f5f5;
 }
+
 
 .sidebar {
   width: 280px;
@@ -570,46 +760,17 @@ const handleKeydownEnter = (e) => {
   font-weight: 500;
 }
 
-.tag-selection {
-  margin-bottom: 12px;
-}
-
-.tag-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.tag-button {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background-color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.tag-button:hover {
-  background-color: #f0f0f0;
-}
-
-.tag-button.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-.selected-tags {
-  font-size: 14px;
-  color: #666;
-  margin-top: 10px;
-}
-
+.tag-section,
 .expiration-section,
 .image-section {
   margin-bottom: 12px;
+}
+
+.tag-select {
+  margin-left: 8px;
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 .expiration-label {
@@ -741,19 +902,33 @@ const handleKeydownEnter = (e) => {
   border: 1px solid #ddd;
 }
 
-.message-tags {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.search-section {
+  padding: 16px 24px;
+  background-color: white;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-.tag-item {
-  background-color: #e9ecef;
-  color: #495057;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  border: 1px solid #dee2e6;
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.search-combobox {
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-detail-btn {
+  flex-shrink: 0;
+}
+
+.date-range {
+  display: flex;
+  gap: 12px;
+}
+
+.date-range .v-text-field {
+  flex: 1;
 }
 </style>
