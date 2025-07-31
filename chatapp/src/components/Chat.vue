@@ -1,10 +1,13 @@
 <script setup>
 import { inject, ref, reactive, onMounted, computed } from "vue"
+import { useRouter } from 'vue-router'
 import ChatService from '../services/ChatService.js'
+import AuthService from '../services/AuthService.js'
 import ImageService from '../services/ImageService.js'
 
 // #region global state
 const userName = inject("userName")
+const router = useRouter()
 // #endregion
 
 // #region reactive variable
@@ -14,9 +17,21 @@ const isNewestFirst = ref(true)
 const selectedImage = ref(null)
 const isUploading = ref(false)
 const fileInput = ref(null)
+const expirationDate = ref("")
+
+// タグ選択機能（develop版から継承）
 const selectedTags = ref([])
 const currentChannel = ref(0)
 
+// サイドバー・チャンネル機能（ui_test版デザインを採用、develop版のチャンネルIDに合わせる）
+const isSidebarOpen = ref(true)
+const channels = ref([
+  { id: 0, name: "引継ぎ", description: "引継ぎ事項", icon: "📋", color: "#28a745" },
+  { id: 1, name: "シフト", description: "シフト調整", icon: "📅", color: "#007bff" },
+  { id: 2, name: "業務連絡", description: "業務に関する連絡", icon: "📢", color: "#ffc107" }
+])
+
+// 利用可能なタグリスト（develop版から継承）
 const availableTags = ref([
   'お知らせ',
   '出欠',
@@ -27,6 +42,17 @@ const availableTags = ref([
   '★★★'
 ])
 
+// 現在のチャンネル情報を取得
+const getCurrentChannelInfo = computed(() => {
+  return channels.value.find(ch => ch.id === currentChannel.value) || {
+    id: 0,
+    name: "引継ぎ",
+    description: "引継ぎ事項",
+    icon: "📋",
+    color: "#28a745"
+  }
+})
+
 // 並び順に応じたリストを計算
 const sortedChatList = computed(() => {
   return isNewestFirst.value ? [...chatList].reverse() : [...chatList]
@@ -36,20 +62,30 @@ const sortedChatList = computed(() => {
 const toggleSortOrder = () => {
   isNewestFirst.value = !isNewestFirst.value
 }
+
+// チャンネルを切り替える
+const switchChannel = (channelId) => {
+  if (currentChannel.value !== channelId) {
+    currentChannel.value = channelId
+  }
+}
+
+// サイドバーの開閉を切り替える
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+}
 // #endregion
 
 // #region lifecycle
 onMounted(async () => {
-  // 最初に過去のメッセージを全て取得
   await loadInitialMessages()
-  // その後リアルタイム監視を開始
   registerSocketEvent()
 })
 // #endregion
 
 // #region browser event handler
 
-// タグを選択
+// タグを選択（develop版から継承）
 const toggleTag = (tag) => {
   const index = selectedTags.value.indexOf(tag)
   if (index === -1) {
@@ -58,7 +94,8 @@ const toggleTag = (tag) => {
     selectedTags.value.splice(index, 1)
   }
 }
-// 投稿メッセージをサーバに送信する
+
+// 投稿メッセージをサーバに送信する（develop版のタグ機能を使用）
 const onPublish = async () => {
   try {
     isUploading.value = true
@@ -71,19 +108,20 @@ const onPublish = async () => {
 
     const trimmedContent = chatContent.value.trim()
 
-    // 厳密なバリデーション：空文字列、スペースのみ、改行のみをチェック
+    // バリデーション：トリム後が空の場合をチェック
     if (!trimmedContent || trimmedContent.length === 0) {
-      // 画像がない場合はメッセージが必須
       if (!imageUrl) {
-        // メッセージなし・画像なしの場合はサイレントに処理終了
         return
       }
     }
 
-    // メッセージまたは画像のいずれかがある場合のみ送信
+    // メッセージまたは画像のいずれかがある場合のみ送信（develop版）
     if (trimmedContent || imageUrl) {
       await ChatService.publish(trimmedContent, userName.value, imageUrl, selectedTags.value, currentChannel.value)
+      
       chatContent.value = ""
+      expirationDate.value = ""
+      selectedTags.value = []
       resetFileInput()
     }
   } catch (error) {
@@ -91,6 +129,22 @@ const onPublish = async () => {
     alert('投稿に失敗しました。もう一度お試しください。')
   } finally {
     isUploading.value = false
+  }
+}
+
+// 退室処理
+const onExit = async () => {
+  try {
+    await ChatService.exit(userName.value)
+
+    if (AuthService.isAuthenticated()) {
+      await AuthService.signOut()
+    }
+
+    router.push('/')
+  } catch (error) {
+    console.error('退室処理でエラーが発生しました:', error)
+    router.push('/')
   }
 }
 
@@ -111,21 +165,23 @@ const resetFileInput = () => {
 }
 // #endregion
 
-const onExit = () => {
-  router.push('/')
-}
-
-// サーバから受信した投稿メッセージを画面上に表示する
+// #region socket event handler
+// サーバから受信した投稿メッセージを画面上に表示する（develop版）
 const onReceivePublish = (data) => {
-  const messageObj = {
-    publisherName: data.publisherName,
-    message: data.message,
-    userID: data.userID,
-    channelID: data.channelID,
-    tag: data.tag || [],
-    imageUrl: data.imageUrl || null
+  try {
+    const messageObj = {
+      publisherName: data.publisherName,
+      message: data.message,
+      userID: data.userID,
+      channelID: data.channelID,
+      tag: data.tag || [],
+      imageUrl: data.imageUrl || null,
+      type: 'message'
+    }
+    chatList.push(messageObj)
+  } catch (error) {
+    console.error('投稿メッセージ処理エラー:', error)
   }
-  chatList.push(messageObj)
 }
 // #endregion
 
@@ -143,25 +199,29 @@ const loadInitialMessages = async () => {
 
 // イベント登録をまとめる
 const registerSocketEvent = () => {
-
-  // 投稿イベントを受け取ったら実行
-  ChatService.onPublish((data) => {
-    onReceivePublish(data)
-  })
+  try {
+    // 投稿イベントを受け取ったら実行
+    ChatService.onPublish((data) => {
+      onReceivePublish(data)
+    })
+  } catch (error) {
+    console.error('イベント登録エラー:', error)
+  }
 }
 
 // CtrlあるいはCommandキーとEnter同時押しで送信
 const handleKeydownEnter = (e) => {
   if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
     onPublish()
   }
 }
-
 // #endregion
 </script>
 
 <template>
-  <div class="chat-container">
+  <div class="chat-app">
+    <!-- サイドバー（ui_test版デザインを採用） -->
     <div class="sidebar" :class="{ 'sidebar-closed': !isSidebarOpen }">
       <div class="sidebar-header">
         <h3>チャンネル</h3>
@@ -169,21 +229,16 @@ const handleKeydownEnter = (e) => {
           {{ isSidebarOpen ? '◀' : '▶' }}
         </button>
       </div>
-      
+
       <div class="sidebar-content" v-if="isSidebarOpen">
         <div class="user-info">
-          <div class="user-avatar">{{ userName.charAt(0).toUpperCase() }}</div>
+          <div class="user-avatar">{{ userName ? userName.charAt(0).toUpperCase() : 'U' }}</div>
           <div class="user-name">{{ userName }}さん</div>
         </div>
-        
+
         <div class="channel-list">
-          <div 
-            v-for="channel in channels" 
-            :key="channel.id"
-            class="channel-item"
-            :class="{ 'active': currentChannel === channel.id }"
-            @click="switchChannel(channel.id)"
-          >
+          <div v-for="channel in channels" :key="channel.id" class="channel-item"
+            :class="{ 'active': currentChannel === channel.id }" @click="switchChannel(channel.id)">
             <span class="channel-icon">{{ channel.icon }}</span>
             <div class="channel-info">
               <div class="channel-name"># {{ channel.name }}</div>
@@ -194,60 +249,26 @@ const handleKeydownEnter = (e) => {
         </div>
       </div>
     </div>
-  </div>
 
-    <div class="mx-auto my-5 px-4">
-      <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
-      <div class="mt-10">
-        <p>ログインユーザ：{{ userName }}さん</p>
-        <div class="tag-selection">
-          <p>タグ選択:</p>
-          <div class="tag-buttons">
-            <button
-              v-for="tag in availableTags"
-              :key="tag"
-              @click="toggleTag(tag)"
-              :class="{ 'selected': selectedTags.includes(tag) }"
-              class="tag-button"
-              type="button"
-            >
-             {{ tag }}
-            </button>
-         </div>
-          <div v-if="selectedTags.length > 0" class="selected-tags">
-            選択中: {{ selectedTags.join(', ') }}
+    <!-- メインコンテンツ（ui_test版デザインを採用） -->
+    <div class="main-content" :class="{ 'main-content-full': !isSidebarOpen }">
+      
+      <div class="chat-header">
+        <div class="current-channel">
+          <span class="current-channel-icon">{{ getCurrentChannelInfo.icon }}</span>
+          <h1 class="current-channel-name"># {{ getCurrentChannelInfo.name }}</h1>
+          <span class="current-channel-desc">{{ getCurrentChannelInfo.description }}</span>
+        </div>
+      </div>
+
+      <div class="chat-container">
+        <!-- メッセージ表示エリア -->
+        <div class="messages-area">
+          <div v-if="chatList.length === 0" class="no-messages">
+            <p>{{ getCurrentChannelInfo.icon }} # {{ getCurrentChannelInfo.name }} チャンネルにはまだメッセージがありません</p>
+            <p>最初のメッセージを投稿してみましょう！</p>
           </div>
-        </div>
-
-        <div class="mt-3">
-          <label class="expiration-label">
-            有効期間を選択してください（オプション）:
-            <input type="date" name="expiration" v-model="expirationDate" class="date-input"
-              :min="new Date().toISOString().split('T')[0]" />
-          </label>
-        </div>
-
-        <textarea variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area" type="text" v-model="chatContent"
-          @keydown.enter="handleKeydownEnter"></textarea>
-
-        <!-- 画像選択部分 -->
-        <div class="mt-3">
-          <input ref="fileInput" type="file" accept="image/*" @change="onImageSelect" class="file-input" />
-          <div v-if="selectedImage" class="selected-image-info">
-            選択された画像: {{ selectedImage.name }}
-          </div>
-        </div>
-        <div class="mt-5">
-          <button class="button-normal" @click="onPublish" :disabled="isUploading">
-            {{ isUploading ? 'アップロード中...' : '投稿' }}
-          </button>
-          <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
-          <button class="button-normal util-ml-8px" @click="toggleSortOrder">
-            {{ isNewestFirst ? "古い順にする" : "新しい順にする" }}
-          </button>
-        </div>
-        <div class="mt-5" v-if="chatList.length !== 0">
-          <ul>
+          <ul v-else class="message-list">
             <li class="chat-item" v-for="(chat, i) in sortedChatList" :key="i">
               <!-- 通常のメッセージ（文字列）の場合 -->
               <template v-if="typeof chat === 'string'">
@@ -258,7 +279,6 @@ const handleKeydownEnter = (e) => {
                 <template v-else>
                   <span class="chat-content chat-message-display">{{ chat }}</span>
                 </template>
-
               </template>
               <!-- 画像付きメッセージ（オブジェクト）の場合 -->
               <template v-else>
@@ -272,6 +292,7 @@ const handleKeydownEnter = (e) => {
                   <div v-if="chat.imageUrl" class="message-image">
                     <img :src="chat.imageUrl" alt="アップロード画像" class="uploaded-image" />
                   </div>
+                  <!-- タグ表示（develop版から継承） -->
                   <div v-if="chat.tag && chat.tag.length > 0" class="message-tags">
                     <span v-for="tag in chat.tag" :key="tag" class="tag-item">
                       {{ tag }}
@@ -282,68 +303,341 @@ const handleKeydownEnter = (e) => {
             </li>
           </ul>
         </div>
+
+        <!-- 入力エリア -->
+        <div class="input-area">
+          <p class="user-status">ログインユーザ：{{ userName }}さん</p>
+
+          <!-- タグ選択（develop版から継承） -->
+          <div class="tag-selection">
+            <p>タグ選択:</p>
+            <div class="tag-buttons">
+              <button
+                v-for="tag in availableTags"
+                :key="tag"
+                @click="toggleTag(tag)"
+                :class="{ 'selected': selectedTags.includes(tag) }"
+                class="tag-button"
+                type="button"
+              >
+               {{ tag }}
+              </button>
+           </div>
+            <div v-if="selectedTags.length > 0" class="selected-tags">
+              選択中: {{ selectedTags.join(', ') }}
+            </div>
+          </div>
+
+          <!-- 有効期間選択 -->
+          <div class="expiration-section">
+            <label class="expiration-label">
+              有効期間を選択してください（オプション）:
+              <input type="date" name="expiration" v-model="expirationDate" class="date-input"
+                :min="new Date().toISOString().split('T')[0]" />
+            </label>
+          </div>
+
+          <!-- メッセージ入力 -->
+          <textarea :placeholder="`# ${getCurrentChannelInfo.name} に投稿...`" rows="4" class="area" v-model="chatContent"
+            @keydown.enter="handleKeydownEnter"></textarea>
+
+          <!-- 画像選択部分 -->
+          <div class="image-section">
+            <input ref="fileInput" type="file" accept="image/*" @change="onImageSelect" class="file-input" />
+            <div v-if="selectedImage" class="selected-image-info">
+              選択された画像: {{ selectedImage.name }}
+            </div>
+          </div>
+
+          <!-- ボタングループ -->
+          <div class="button-group">
+            <button class="button-normal button-primary" @click="onPublish" :disabled="isUploading">
+              {{ isUploading ? 'アップロード中...' : '投稿' }}
+            </button>
+            <button class="button-normal" @click="toggleSortOrder">
+              {{ isNewestFirst ? "古い順" : "新しい順" }}
+            </button>
+            <button type="button" class="button-normal button-exit" @click="onExit">
+              退室する
+            </button>
+          </div>
+        </div>
       </div>
-      <router-link to="/" class="link">
-        <button type="button" class="button-normal button-exit" @click="onExit">退室する</button>
-      </router-link>
     </div>
+  </div>
 </template>
 
 <style scoped>
-.link {
-  text-decoration: none;
+.chat-app {
+  display: flex;
+  height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.sidebar {
+  width: 280px;
+  background-color: #2c3e50;
+  color: white;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-closed {
+  width: 60px;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #34495e;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sidebar-toggle {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.user-info {
+  padding: 16px;
+  border-bottom: 1px solid #34495e;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #3498db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.channel-list {
+  padding: 8px 0;
+}
+
+.channel-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.channel-item:hover {
+  background-color: #34495e;
+}
+
+.channel-item.active {
+  background-color: #3498db;
+}
+
+.channel-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.channel-info {
+  flex: 1;
+}
+
+.channel-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.channel-desc {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.channel-indicator {
+  width: 4px;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.channel-item.active .channel-indicator {
+  opacity: 1;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.main-content-full {
+  margin-left: 0;
+}
+
+.chat-header {
+  background-color: white;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.current-channel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.current-channel-icon {
+  font-size: 24px;
+}
+
+.current-channel-name {
+  margin: 0;
+  font-size: 24px;
+  color: #2c3e50;
+}
+
+.current-channel-desc {
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+}
+
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.no-messages {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 40px 20px;
+}
+
+.message-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.input-area {
+  padding: 20px 24px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #fafafa;
+}
+
+.user-status {
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.tag-selection {
+  margin-bottom: 12px;
+}
+
+.tag-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.tag-button {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.tag-button:hover {
+  background-color: #f0f0f0;
+}
+
+.tag-button.selected {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.selected-tags {
+  font-size: 14px;
+  color: #666;
+  margin-top: 10px;
+}
+
+.expiration-section,
+.image-section {
+  margin-bottom: 12px;
+}
+
+.expiration-label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+}
+
+.date-input {
+  margin-left: 8px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 .area {
-  width: 500px;
-  border: 1px solid #000;
-  margin-top: 8px;
-}
-
-/* === 追加 === */
-.chat-item {
-  display: flex;
-  /* Flexboxコンテナにする */
-  align-items: flex-start;
-  /* アイテムを上端に揃える */
-  margin-top: 16px;
-  /* item mt-4 の代わりに直接マージンを設定 */
-}
-
-.chat-publisher {
-  flex-shrink: 0;
-  /* 投稿者名が縮まないようにする */
-  margin-right: 5px;
-  /* 投稿者名とメッセージの間に少しスペース */
-  display: block;
-}
-
-.chat-content {
-  flex-grow: 1;
-  /* 残りのスペースを全て占有させる */
-  min-width: 0;
-  /* 内容がはみ出さないようにする*/
-  display: block;
-}
-
-.chat-message-display {
-  /*改行*/
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.util-ml-8px {
-  margin-left: 8px;
-}
-
-.button-exit {
-  color: #000;
-  margin-top: 8px;
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 12px;
 }
 
 .file-input {
-  margin-top: 8px;
   padding: 4px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -355,17 +649,81 @@ const handleKeydownEnter = (e) => {
   color: #666;
 }
 
+.button-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.button-normal {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button-normal:hover {
+  background-color: #f0f0f0;
+}
+
+.button-primary {
+  background-color: #3498db;
+  color: white;
+  border-color: #3498db;
+}
+
+.button-primary:hover {
+  background-color: #2980b9;
+}
+
+.button-exit {
+  background-color: #e74c3c;
+  color: white;
+  border-color: #e74c3c;
+}
+
+.button-exit:hover {
+  background-color: #c0392b;
+}
+
+.chat-item {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+
+.chat-publisher {
+  flex-shrink: 0;
+  margin-right: 5px;
+  display: block;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.chat-content {
+  flex-grow: 1;
+  min-width: 0;
+  display: block;
+}
+
+.chat-message-display {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
 .message-container {
   flex-grow: 1;
-  /* 残りのスペースを全て占有させる */
   min-width: 0;
-  /* 内容がはみ出さないようにする*/
   padding-left: 8px;
 }
 
 .message-header {
   font-weight: bold;
   margin-bottom: 4px;
+  color: #2c3e50;
 }
 
 .message-text {
@@ -381,5 +739,21 @@ const handleKeydownEnter = (e) => {
   max-height: 200px;
   border-radius: 8px;
   border: 1px solid #ddd;
+}
+
+.message-tags {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-item {
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  border: 1px solid #dee2e6;
 }
 </style>
