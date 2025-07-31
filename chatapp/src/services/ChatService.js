@@ -46,6 +46,7 @@ class ChatService {
           channelID: data.channelID,
           tag: data.tag || [],
           imageUrl: data.imageUrl || null,
+          expirationDate: data.expirationDate || null,
           timestamp: data.timestamp
         })
       })
@@ -87,6 +88,7 @@ class ChatService {
             channelID: data.channelID,
             tag: data.tag || [],
             imageUrl: data.imageUrl || null,
+            expirationDate: data.expirationDate || null,
             timestamp: data.timestamp
           }))
         }
@@ -121,7 +123,12 @@ class ChatService {
 
       // 画像URLがある場合は追加
       if (messageObj.imageUrl) {
-        messageData.imageUrl = imageUrl
+        messageData.imageUrl = messageObj.imageUrl
+      }
+
+      // 有効日がある場合は追加
+      if (messageObj.expirationDate) {
+        messageData.expirationDate = messageObj.expirationDate
       }
 
       await addDoc(collection(db, 'messages'), messageData)

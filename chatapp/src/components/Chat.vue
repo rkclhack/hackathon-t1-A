@@ -165,7 +165,7 @@ const onPublish = async () => {
         imageUrl: imageUrl,
         channelID: currentChannel.value,
         tags: selectedTags.value,
-        // expirationDate: expirationDate.value,
+        expirationDate: expirationDate.value,
       }
       await ChatService.publish(messageObj)
       
@@ -226,6 +226,7 @@ const onReceivePublish = (data) => {
       channelID: data.channelID,
       tag: data.tag || [],
       imageUrl: data.imageUrl || null,
+      expirationDate: data.expirationDate || null,
       timestamp: data.timestamp
     }
     chatList.push(messageObj)
@@ -441,6 +442,10 @@ const handleKeydownEnter = (e) => {
                     <span v-for="tag in chat.tag" :key="tag" class="tag-item">
                       {{ tag }}
                     </span>
+                  </div>
+                  <!-- 有効日表示 -->
+                  <div v-if="chat.expirationDate" class="message-expiration">
+                    有効日: {{ chat.expirationDate }}
                   </div>
                 </div>
               </template>
@@ -937,5 +942,12 @@ const handleKeydownEnter = (e) => {
 
 .date-range .v-text-field {
   flex: 1;
+}
+
+.message-expiration {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
 }
 </style>
