@@ -22,6 +22,14 @@ const expirationDate = ref("")
 // タグ選択を追加
 const selectedTags = ref([])
 
+// 詳細検索用の変数を追加
+const searchDialog = ref(false)
+const searchKeyword = ref("")
+const searchTags = ref([])
+const searchDateFrom = ref("")
+const searchDateTo = ref("")
+const searchChannel = ref("")
+
 // サイドバー・チャンネル機能
 const currentChannel = ref("general")
 const isSidebarOpen = ref(true)
@@ -31,6 +39,33 @@ const channels = ref([
   { id: "random", name: "雑談", description: "自由な雑談", icon: "🎉", color: "#ffc107" },
   { id: "announcement", name: "お知らせ", description: "重要なお知らせ", icon: "📢", color: "#dc3545" }
 ])
+
+// 利用可能なタグリスト
+const availableTags = ref([
+  'お知らせ', '出欠', '生徒名', '担当教師名', '重要度', '質問', '回答', 'イベント'
+])
+
+// 詳細検索実行
+const executeDetailedSearch = () => {
+  console.log('詳細検索実行:', {
+    keyword: searchKeyword.value,
+    tags: searchTags.value,
+    dateFrom: searchDateFrom.value,
+    dateTo: searchDateTo.value,
+    channel: searchChannel.value
+  })
+  // ここで実際の検索処理を実装
+  searchDialog.value = false
+}
+
+// 検索条件をリセット
+const resetSearchForm = () => {
+  searchKeyword.value = ""
+  searchTags.value = []
+  searchDateFrom.value = ""
+  searchDateTo.value = ""
+  searchChannel.value = ""
+}
 
 // チャンネル別のメッセージを管理
 const channelMessages = reactive({
@@ -298,9 +333,100 @@ const handleKeydownEnter = (e) => {
     <!-- メインコンテンツ -->
     <div class="main-content" :class="{ 'main-content-full': !isSidebarOpen }">
       <div class="search-section">
-        <v-combobox label="ラベル検索" :items="['California', 'Colorado', 'Florida', 'Georgia', 'Texas', 'Wyoming']"
-          class="search-combobox"></v-combobox>
+        <div class="search-row">
+          <v-combobox 
+            label="ラベル検索" 
+            :items="['California', 'Colorado', 'Florida', 'Georgia', 'Texas', 'Wyoming']"
+            class="search-combobox"
+          ></v-combobox>
+          
+          <!-- 詳細検索ダイアログ -->
+          <v-dialog v-model="searchDialog" max-width="600">
+            <template v-slot:activator="{ props: activatorProps }">
+              <v-btn
+                v-bind="activatorProps"
+                color="primary"
+                variant="outlined"
+                class="search-detail-btn"
+              >
+                詳細検索
+              </v-btn>
+            </template>
+
+            <template v-slot:default="{ isActive }">
+              <v-card title="詳細検索">
+                <v-card-text>
+                  <!-- キーワード検索 -->
+                  <!---<v-text-field-
+                    v-model="searchKeyword"
+                    label="キーワード"
+                    placeholder="メッセージ内容を検索..."
+                    class="mb-3" 
+                  ></v-text-field> -->
+
+                  <!-- タグ選択 -->
+                  <!--<v-select
+                    v-model="searchTags"
+                    :items="availableTags"
+                    label="タグ"
+                    multiple
+                    chips
+                    closable-chips
+                    class="mb-3"
+                  ></v-select> -->
+
+                  <!-- 期間選択 -->
+                  <div class="date-range mb-3">
+                    <v-text-field
+                      v-model="searchDateFrom"
+                      label="開始日"
+                      type="date"
+                      class="mr-2"
+                    ></v-text-field>
+                    <v-text-field
+                      v-model="searchDateTo"
+                      label="終了日"
+                      type="date"
+                    ></v-text-field>
+                  </div>
+
+                  <!-- チャンネル選択 -->
+                  <v-select
+                    v-model="searchChannel"
+                    :items="channels"
+                    item-title="name"
+                    item-value="id"
+                    label="チャンネル"
+                    class="mb-3"
+                  ></v-select>
+                </v-card-text> 
+
+                <v-card-actions>
+                  <v-btn
+                    text="リセット"
+                    variant="outlined"
+                    @click="resetSearchForm"
+                  ></v-btn>
+                  
+                  <v-spacer></v-spacer>
+
+                  <v-btn
+                    text="キャンセル"
+                    @click="isActive.value = false"
+                  ></v-btn>
+                  
+                  <v-btn
+                    text="検索"
+                    color="primary"
+                    @click="executeDetailedSearch"
+                  ></v-btn>
+                </v-card-actions>
+              </v-card>
+            </template>
+          </v-dialog>
+        </div>
       </div>
+      
       <div class="chat-header">
         <div class="current-channel">
           <span class="current-channel-icon">{{ getCurrentChannelInfo.icon }}</span>
@@ -309,9 +435,7 @@ const handleKeydownEnter = (e) => {
         </div>
       </div>
 
-
       <div class="chat-container">
-
         <!-- メッセージ表示エリア -->
         <div class="messages-area">
           <div v-if="currentChannelMessages.length === 0" class="no-messages">
@@ -404,16 +528,16 @@ const handleKeydownEnter = (e) => {
   </div>
 </template>
 
-<!-- CSSは既存のものをそのまま使用 -->
+
 <style scoped>
-/* 既存のスタイルをそのまま維持 */
+
 .chat-app {
   display: flex;
   height: 100vh;
   background-color: #f5f5f5;
 }
 
-/* 以下、既存のスタイルと同じ... */
+
 .sidebar {
   width: 280px;
   background-color: #2c3e50;
@@ -758,7 +882,27 @@ const handleKeydownEnter = (e) => {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .search-combobox {
+  flex: 1;
   max-width: 400px;
+}
+
+.search-detail-btn {
+  flex-shrink: 0;
+}
+
+.date-range {
+  display: flex;
+  gap: 12px;
+}
+
+.date-range .v-text-field {
+  flex: 1;
 }
 </style>
