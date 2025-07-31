@@ -27,9 +27,6 @@ const onGoogleSignIn = async () => {
     const user = await AuthService.signInWithGoogle()
     const displayName = AuthService.getUserName()
     
-    // 入室メッセージを送信
-    await ChatService.enter(displayName)
-    
     // 全体で使用するnameに認証済みユーザー名を格納
     userName.value = displayName
     
@@ -52,9 +49,6 @@ const onEnter = async () => {
   }
   
   try {
-    // 入室メッセージを送信
-    await ChatService.enter(inputUserName.value)
-
     // 全体で使用するnameに入力されたユーザー名を格納
     userName.value = inputUserName.value
 
