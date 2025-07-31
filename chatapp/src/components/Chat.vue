@@ -119,10 +119,10 @@ const onExit = () => {
 const onReceivePublish = (data) => {
   const messageObj = {
     publisherName: data.publisherName,
-    message: data.message,
-    userID: data.userID,
-    channelID: data.channelID,
-    tag: data.tag || [],
+    text: data.text,
+    userId: data.userId,
+    channelId: data.channelId,
+    tags: data.tags || [],
     imageUrl: data.imageUrl || null
   }
   chatList.push(messageObj)

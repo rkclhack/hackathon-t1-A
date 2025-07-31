@@ -9,7 +9,6 @@ import {
   getDocs
 } from 'firebase/firestore'
 import AuthService from './AuthService.js'
-import { transformVNodeArgs } from 'vue'
 
 /**
  * チャット通信を担うサービスクラス
@@ -40,11 +39,11 @@ class ChatService {
         const data = doc.data()
         messages.push({
           id: doc.id,
-          message: data.message,
+          text: data.text,
           publisherName: data.publisherName,
-          userID: data.userID,
-          channelID: data.channelID,
-          tag: data.tag || [],
+          userId: data.userId,
+          channelId: data.channelId,
+          tags: data.tags || [],
           imageUrl: data.imageUrl || null,
           timestamp: data.timestamp
         })
@@ -81,11 +80,11 @@ class ChatService {
 
           this.eventHandlers.publish.forEach(handler => handler({
             id: change.doc.id,
-            message: data.message,
+            text: data.text,
             publisherName: data.publisherName,
-            userID: data.userID,
-            channelID: data.channelID,
-            tag: data.tag || [],
+            userId: data.userId,
+            channelId: data.channelId,
+            tags: data.tags || [],
             imageUrl: data.imageUrl || null,
             timestamp: data.timestamp
           }))
@@ -100,22 +99,22 @@ class ChatService {
 
   /**
    * メッセージ投稿処理
-   * @param {string} message - メッセージ内容
+   * @param {string} text - メッセージ内容
    * @param {string} publisherName - 投稿者名
    * @param {string|null} imageUrl - 画像のURL（オプション）
    */
-  async publish(message, publisherName, imageUrl = null, tags = [], channelID = 0) {
+  async publish(text, publisherName, imageUrl = null, tags = [], channelId = 0) {
     try {
       // AuthServiceからユーザーIDを取得
       const currentUser = AuthService.getCurrentUser()
-      const userID = currentUser ? currentUser.uid : null
+      const userId = currentUser ? currentUser.uid : null
 
       const messageData = {
-        message: message,
+        text: text,
         publisherName: publisherName,
-        userID: userID,
-        channelID: channelID,
-        tag: tags,
+        userId: userId,
+        channelId: channelId,
+        tags: tags,
         timestamp: serverTimestamp()
       }
 
