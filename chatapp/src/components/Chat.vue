@@ -398,6 +398,7 @@ const handleKeydownEnter = (e) => {
         </div>
       </div>
       
+      <!--
       <div class="chat-header">
         <div class="current-channel">
           <span class="current-channel-icon">{{ getCurrentChannelInfo.icon }}</span>
@@ -405,6 +406,7 @@ const handleKeydownEnter = (e) => {
           <span class="current-channel-desc">{{ getCurrentChannelInfo.description }}</span>
         </div>
       </div>
+    -->
 
       <div class="chat-container">
         <!-- メッセージ表示エリア -->
@@ -521,6 +523,7 @@ const handleKeydownEnter = (e) => {
   display: flex;
   height: 100vh;
   background-color: #f5f5f5;
+  overflow: hidden; /* 全体のスクロールを無効 */
 }
 
 .sidebar {
@@ -530,10 +533,25 @@ const handleKeydownEnter = (e) => {
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .sidebar-closed {
   width: 60px;
+}
+
+/* メインコンテンツエリア */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column; /* 縦方向に配置 */
+  transition: all 0.3s ease;
+  height: 100vh; /* 高さを固定 */
+  overflow: hidden; /* メインコンテンツ自体はスクロールしない */
+}
+
+.main-content-full {
+  margin-left: 0;
 }
 
 .sidebar-header {
@@ -656,10 +674,7 @@ const handleKeydownEnter = (e) => {
 }
 
 .chat-header {
-  background-color: white;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e0e0e0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: none;
 }
 
 .current-channel {
@@ -669,12 +684,12 @@ const handleKeydownEnter = (e) => {
 }
 
 .current-channel-icon {
-  font-size: 24px;
+  font-size: 18px;
 }
 
 .current-channel-name {
   margin: 0;
-  font-size: 24px;
+  font-size: 18px;
   color: #2c3e50;
 }
 
@@ -688,6 +703,7 @@ const handleKeydownEnter = (e) => {
   display: flex;
   flex-direction: column;
   background-color: white;
+  min-height: 0;
 }
 
 .messages-area {
@@ -709,27 +725,27 @@ const handleKeydownEnter = (e) => {
 }
 
 .input-area {
-  padding: 20px 24px;
+  padding: 12px 16px;
   border-top: 1px solid #e0e0e0;
   background-color: #fafafa;
+  flex-shrink: 0;
 }
 
 .user-status {
-  margin-bottom: 12px;
-  font-weight: 500;
+  display: none;
 }
 
 .tag-section,
 .expiration-section,
 .image-section {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .tag-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0;
+  gap: 6px;
+  margin: 6px 0;
 }
 
 .tag-button {
@@ -760,7 +776,7 @@ const handleKeydownEnter = (e) => {
 
 .expiration-section,
 .image-section {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .tag-select {
@@ -772,7 +788,7 @@ const handleKeydownEnter = (e) => {
 
 .expiration-label {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
 }
 
@@ -796,21 +812,20 @@ const handleKeydownEnter = (e) => {
 }
 
 .file-input {
-  padding: 4px;
+  padding: 3px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  font-size: 13px;
 }
 
 .selected-image-info {
-  margin-top: 4px;
-  font-size: 14px;
+  margin-top: 3px;
+  font-size: 12px;
   color: #666;
 }
 
 .button-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+  display: none;
 }
 
 .button-normal {
@@ -915,9 +930,10 @@ const handleKeydownEnter = (e) => {
   border: 1px solid #dee2e6;
 }
 .search-section {
-  padding: 16px 24px;
+  padding: 8px 16px;
   background-color: white;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .search-row {
