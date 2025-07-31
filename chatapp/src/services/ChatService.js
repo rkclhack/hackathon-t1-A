@@ -51,7 +51,8 @@ class ChatService {
             case 'message':
               this.eventHandlers.publish.forEach(handler => handler({
                 message: data.message,
-                publisherName: data.publisherName
+                publisherName: data.publisherName,
+                imageUrl: data.imageUrl || null
               }))
               break
           }
@@ -109,15 +110,23 @@ class ChatService {
    * メッセージ投稿処理
    * @param {string} message - メッセージ内容
    * @param {string} publisherName - 投稿者名
+   * @param {string|null} imageUrl - 画像のURL（オプション）
    */
-  async publish(message, publisherName) {
+  async publish(message, publisherName, imageUrl = null) {
     try {
-      await addDoc(collection(db, 'messages'), {
+      const messageData = {
         type: 'message',
         message: message,
         publisherName: publisherName,
         timestamp: serverTimestamp()
-      })
+      }
+      
+      // 画像URLがある場合は追加
+      if (imageUrl) {
+        messageData.imageUrl = imageUrl
+      }
+      
+      await addDoc(collection(db, 'messages'), messageData)
     } catch (error) {
       console.error('メッセージ投稿でエラーが発生しました:', error)
     }

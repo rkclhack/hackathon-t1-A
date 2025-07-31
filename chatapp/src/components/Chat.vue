@@ -2,6 +2,7 @@
 import { inject, ref, reactive, onMounted, computed } from "vue"
 import ChatService from '../services/ChatService.js'
 import AuthService from '../services/AuthService.js'
+import ImageService from '../services/ImageService.js'
 
 // #region global state
 const userName = inject("userName")
@@ -11,6 +12,9 @@ const userName = inject("userName")
 const chatContent = ref("")
 const chatList = reactive([])
 const reversedChatList = computed(() => [...chatList].reverse())
+const selectedImage = ref(null)
+const isUploading = ref(false)
+const fileInput = ref(null)
 // #endregion
 
 // #region lifecycle
@@ -23,11 +27,27 @@ onMounted(() => {
 // 投稿メッセージをサーバに送信する
 const onPublish = async () =>  {
   try {
-    await ChatService.publish(chatContent.value, userName.value)
-    chatContent.value = ""
+    isUploading.value = true
+    let imageUrl = null
+    
+    // 画像が選択されている場合はアップロード
+    if (selectedImage.value) {
+      imageUrl = await ImageService.uploadImage(selectedImage.value, userName.value)
+    }
+    
+    // メッセージまたは画像のいずれかがある場合のみ送信
+    if (chatContent.value.trim() || imageUrl) {
+      await ChatService.publish(chatContent.value, userName.value, imageUrl)
+      chatContent.value = ""
+      resetFileInput()
+    } else {
+      alert('メッセージまたは画像を選択してください。')
+    }
   } catch (error) {
-    console.error('メッセージの投稿に失敗しました:', error)
-    alert('メッセージの投稿に失敗しました。もう一度お試しください。')
+    console.error('投稿に失敗しました:', error)
+    alert('投稿に失敗しました。もう一度お試しください。')
+  } finally {
+    isUploading.value = false
   }
 }
 
@@ -51,6 +71,14 @@ const onMemo = () => {
   const memoMessage = `${userName.value}さんのメモ:${chatContent.value}`
   chatList.push(memoMessage)
   chatContent.value = ""
+  resetFileInput()
+}
+
+// 画像ファイル選択処理
+const onImageSelect = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
 }
 // #endregion
 
@@ -69,8 +97,13 @@ const onReceiveExit = (data) => {
 
 // サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
-  const publishMessage = `${data.publisherName}さん:${data.message}`
-  chatList.push(publishMessage)
+  const messageObj = {
+    publisherName: data.publisherName,
+    message: data.message,
+    imageUrl: data.imageUrl || null,
+    type: 'message'
+  }
+  chatList.push(messageObj)
 }
 // #endregion
 
@@ -101,13 +134,51 @@ const registerSocketEvent = () => {
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
       <textarea variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area" type="text" v-model="chatContent"></textarea>
+      
+      <!-- 画像選択部分 -->
+      <div class="mt-3">
+        <input 
+          ref="fileInput"
+          type="file" 
+          accept="image/*" 
+          @change="onImageSelect"
+          class="file-input"
+        />
+        <div v-if="selectedImage" class="selected-image-info">
+          選択された画像: {{ selectedImage.name }}
+        </div>
+      </div>
+      
       <div class="mt-5">
-        <button class="button-normal" @click="onPublish">投稿</button>
+        <button 
+          class="button-normal" 
+          @click="onPublish"
+          :disabled="isUploading"
+        >
+          {{ isUploading ? 'アップロード中...' : '投稿' }}
+        </button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in reversedChatList" :key="i">{{ chat }}</li>
+          <li class="item mt-4" v-for="(chat, i) in reversedChatList" :key="i">
+            <!-- 通常のメッセージ（文字列）の場合 -->
+            <div v-if="typeof chat === 'string'">
+              {{ chat }}
+            </div>
+            <!-- 画像付きメッセージ（オブジェクト）の場合 -->
+            <div v-else class="message-container">
+              <div class="message-header">
+                {{ chat.publisherName }}さん:
+              </div>
+              <div v-if="chat.message" class="message-text">
+                {{ chat.message }}
+              </div>
+              <div v-if="chat.imageUrl" class="message-image">
+                <img :src="chat.imageUrl" alt="アップロード画像" class="uploaded-image" />
+              </div>
+            </div>
+          </li>
         </ul>
       </div>
     </div>
@@ -139,5 +210,42 @@ const registerSocketEvent = () => {
 .button-exit {
   color: #000;
   margin-top: 8px;
+}
+
+.file-input {
+  margin-top: 8px;
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.selected-image-info {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #666;
+}
+
+.message-container {
+  padding-left: 8px;
+}
+
+.message-header {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.message-text {
+  margin-bottom: 8px;
+}
+
+.message-image {
+  margin-top: 8px;
+}
+
+.uploaded-image {
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
 }
 </style>
