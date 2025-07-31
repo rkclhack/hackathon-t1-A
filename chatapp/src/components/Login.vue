@@ -66,7 +66,7 @@ const onEnter = async () => {
 　<div class="container">
     <div class="left">
       <div class="logo-area">
-        <img src="/home/dev5/hackathon/chatapp/src/images/logo.png" alt="ロゴ" class="chat-logo" />
+        <img src="../images/logo.png" alt="ロゴ" class="chat-logo" />
       </div>
       <h1>個別指導塾「Black」</h1>
       

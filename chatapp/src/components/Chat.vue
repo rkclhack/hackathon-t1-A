@@ -301,10 +301,6 @@ const handleKeydownEnter = (e) => {
   }
 }
 
-// 選択されたチャンネルでフィルタリング
-const filteredChatList = computed(() => {
-  return chatList.filter(chat => chat.channelID === currentChannel.value);
-});
 </script>
 
 <template>
