@@ -271,7 +271,7 @@ const onReceivePublish = (data) => {
       text: data.text || data.message,
       userID: data.userID,
       channelID: data.channelID,
-      tags: data.tags || data.tag || [],
+      tags: data.tag || [],
       imageUrl: data.imageUrl || null,
       expirationDate: data.expirationDate || null,
       timestamp: data.timestamp
@@ -289,7 +289,13 @@ const onReceivePublish = (data) => {
 const loadInitialMessages = async () => {
   try {
     const initialMessages = await ChatService.getInitialMessages()
-    chatList.push(...initialMessages)
+
+    const convertedMessages = initialMessages.map(message => ({
+      ...message,
+      tags: message.tag || []  // tag → tags に変換
+    }))
+
+    chatList.push(...convertedMessages)
     console.log(chatList)
     scrollToBottom() // 初期読み込み時も最下部へスクロール
   } catch (error) {
