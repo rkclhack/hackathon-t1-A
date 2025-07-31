@@ -40,7 +40,7 @@ class ChatService {
         const data = doc.data()
         messages.push({
           id: doc.id,
-          message: data.message,
+          text: data.text || data.message, // 後方互換性のため新旧両対応
           publisherName: data.publisherName,
           userID: data.userID,
           channelID: data.channelID,
@@ -81,7 +81,7 @@ class ChatService {
 
           this.eventHandlers.publish.forEach(handler => handler({
             id: change.doc.id,
-            message: data.message,
+            text: data.text || data.message, // 後方互換性のため新旧両対応
             publisherName: data.publisherName,
             userID: data.userID,
             channelID: data.channelID,
@@ -100,9 +100,12 @@ class ChatService {
 
   /**
    * メッセージ投稿処理
-   * @param {string} message - メッセージ内容
-   * @param {string} publisherName - 投稿者名
-   * @param {string|null} imageUrl - 画像のURL（オプション）
+   * @param {Object} messageObj - メッセージオブジェクト
+   * @param {string} messageObj.text - メッセージ内容
+   * @param {string} messageObj.publisherName - 投稿者名
+   * @param {number} messageObj.channelID - チャンネルID
+   * @param {Array} messageObj.tags - タグ配列
+   * @param {string|null} messageObj.imageUrl - 画像のURL（オプション）
    */
   async publish(messageObj) {
     try {
@@ -111,7 +114,7 @@ class ChatService {
       const userID = currentUser ? currentUser.uid : null
 
       const messageData = {
-        message: messageObj.message,
+        text: messageObj.text,
         publisherName: messageObj.publisherName,
         userID: userID,
         channelID: messageObj.channelID,
@@ -121,7 +124,7 @@ class ChatService {
 
       // 画像URLがある場合は追加
       if (messageObj.imageUrl) {
-        messageData.imageUrl = imageUrl
+        messageData.imageUrl = messageObj.imageUrl
       }
 
       await addDoc(collection(db, 'messages'), messageData)

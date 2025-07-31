@@ -1,19 +1,19 @@
 <script setup>
-import { inject, ref, reactive, onMounted, computed } from "vue"
+import { ref, reactive, onMounted, computed } from "vue"
 import { useRouter } from 'vue-router'
 import ChatService from '../services/ChatService.js'
 import AuthService from '../services/AuthService.js'
 import ImageService from '../services/ImageService.js'
+import UserService from '../services/UserService.js'
 
 // #region global state
-const userName = inject("userName")
+const userName = ref("")
 const router = useRouter()
 // #endregion
 
 // #region reactive variable
-const chatContent = ref("")
+const inputText = ref("")
 const chatList = reactive([])
-const isNewestFirst = ref(true)
 const selectedImage = ref(null)
 const isUploading = ref(false)
 const fileInput = ref(null)
@@ -33,6 +33,8 @@ const searchChannel = ref("")
 // サイドバー・チャンネル機能（ui_test版デザインを採用、develop版のチャンネルIDに合わせる）
 const isSidebarOpen = ref(true)
 const channels = ref([
+  { id: -1, name: "すべて", description: "全てのメッセージ", icon: "🌐", color: "#6c757d" },
+  { id: -2, name: "その他", description: "分類されていないメッセージ", icon: "📝", color: "#6c757d" },
   { id: 0, name: "引継ぎ", description: "引継ぎ事項", icon: "📋", color: "#28a745" },
   { id: 1, name: "シフト", description: "シフト調整", icon: "📅", color: "#007bff" },
   { id: 2, name: "業務連絡", description: "業務に関する連絡", icon: "📢", color: "#ffc107" }
@@ -48,18 +50,50 @@ const availableTags = ref([
   '★★',
   '★★★'
 ])
-const currentChannel = ref(0)
+const currentChannel = ref(-1) // デフォルトは「すべて」チャンネル
 
 
 // 現在のチャンネル情報を取得
 const getCurrentChannelInfo = computed(() => {
   return channels.value.find(ch => ch.id === currentChannel.value) || {
-    id: "general",
-    name: "一般",
-    description: "全般的な話題",
-    icon: "💬",
-    color: "#28a745"
+    id: -1,
+    name: "すべて",
+    description: "全てのメッセージ",
+    icon: "🌐",
+    color: "#6c757d"
   }
+})
+
+// チャンネル別にフィルタリングされたメッセージリスト
+const filteredChatList = computed(() => {
+  const currentChannelId = currentChannel.value
+  
+  // 「すべて」チャンネル: 全メッセージを表示
+  if (currentChannelId === -1) {
+    return chatList
+  }
+  
+  // 「その他」チャンネル: channelIDがnull/undefinedのメッセージを表示
+  if (currentChannelId === -2) {
+    return chatList.filter(message => {
+      // 文字列メッセージ（古い形式）は「その他」に表示
+      if (typeof message === 'string') {
+        return true
+      }
+      // channelIDがnull/undefinedのメッセージ
+      return message.channelID == null || message.channelID === undefined
+    })
+  }
+  
+  // 特定チャンネル: 該当するchannelIDのメッセージのみ表示
+  return chatList.filter(message => {
+    // 文字列メッセージ（古い形式）は表示しない
+    if (typeof message === 'string') {
+      return false
+    }
+    // channelIDが一致するメッセージのみ
+    return message.channelID === currentChannelId
+  })
 })
 
 // 詳細検索実行
@@ -84,23 +118,7 @@ const resetSearchForm = () => {
   searchChannel.value = ""
 }
 
-// チャンネル別のメッセージを管理
-const channelMessages = reactive({
-  general: [],
-  tech: [],
-  random: [],
-  announcement: []
-})
 
-// 並び順に応じたリストを計算
-const sortedChatList = computed(() => {
-  return isNewestFirst.value ? [...chatList].reverse() : [...chatList]
-})
-
-// 並び順を切り替える
-const toggleSortOrder = () => {
-  isNewestFirst.value = !isNewestFirst.value
-}
 
 // チャンネルを切り替える
 const switchChannel = (channelId) => {
@@ -117,6 +135,9 @@ const toggleSidebar = () => {
 
 // #region lifecycle
 onMounted(async () => {
+  // ユーザー名を設定
+  userName.value = UserService.getUserNameValue()
+  
   await loadInitialMessages()
   registerSocketEvent()
 })
@@ -137,6 +158,12 @@ const toggleTag = (tag) => {
 // 投稿メッセージをサーバに送信する（develop版のタグ機能を使用）
 const onPublish = async () => {
   try {
+    // 「すべて」「その他」チャンネルでは投稿不可
+    if (currentChannel.value < 0) {
+      alert('このチャンネルでは投稿できません。投稿するチャンネルを選択してください。')
+      return
+    }
+
     isUploading.value = true
     let imageUrl = null
 
@@ -145,7 +172,7 @@ const onPublish = async () => {
       imageUrl = await ImageService.uploadImage(selectedImage.value, userName.value)
     }
 
-    const trimmedContent = chatContent.value.trim()
+    const trimmedContent = inputText.value.trim()
 
     // バリデーション：トリム後が空の場合をチェック
     if (!trimmedContent || trimmedContent.length === 0) {
@@ -156,20 +183,18 @@ const onPublish = async () => {
 
     // 元の入力内容（空白含む）を送信
     if (trimmedContent || imageUrl) {
-      // ChatServiceのpublishメソッドの引数を修正
-
       // チャンネル別メッセージに追加
       const messageObj = {
-        publisherName: "eeeee",
-        message: trimmedContent,
+        publisherName: userName.value,
+        text: inputText.value,
         imageUrl: imageUrl,
-        channelID: currentChannel.value,
+        channelID: currentChannel.value, // 正の値のchannelIDのみ
         tags: selectedTags.value,
         // expirationDate: expirationDate.value,
       }
       await ChatService.publish(messageObj)
       
-      chatContent.value = ""
+      inputText.value = ""
       expirationDate.value = ""
       selectedTags.value = []
       resetFileInput()
@@ -185,7 +210,6 @@ const onPublish = async () => {
 // 退室処理
 const onExit = async () => {
   try {
-    await ChatService.exit(userName.value)
 
     if (AuthService.isAuthenticated()) {
       await AuthService.signOut()
@@ -221,10 +245,10 @@ const onReceivePublish = (data) => {
   try {
     const messageObj = {
       publisherName: data.publisherName,
-      message: data.message,
+      text: data.text || data.message,
       userID: data.userID,
       channelID: data.channelID,
-      tag: data.tag || [],
+      tags: data.tags || data.tag || [],
       imageUrl: data.imageUrl || null,
       timestamp: data.timestamp
     }
@@ -408,12 +432,12 @@ const handleKeydownEnter = (e) => {
       <div class="chat-container">
         <!-- メッセージ表示エリア -->
         <div class="messages-area">
-          <div v-if="chatList.length === 0" class="no-messages">
+          <div v-if="filteredChatList.length === 0" class="no-messages">
             <p>{{ getCurrentChannelInfo.icon }} # {{ getCurrentChannelInfo.name }} チャンネルにはまだメッセージがありません</p>
-            <p>最初のメッセージを投稿してみましょう！</p>
+            <p v-if="currentChannel >= 0">最初のメッセージを投稿してみましょう！</p>
           </div>
           <ul v-else class="message-list">
-            <li class="chat-item" v-for="(chat, i) in sortedChatList" :key="i">
+            <li class="chat-item" v-for="(chat, i) in filteredChatList" :key="i">
               <!-- 通常のメッセージ（文字列）の場合 -->
               <template v-if="typeof chat === 'string'">
                 <template v-if="chat.includes(':')">
@@ -430,15 +454,15 @@ const handleKeydownEnter = (e) => {
                   <div class="message-header">
                     {{ chat.publisherName }}さん:
                   </div>
-                  <div v-if="chat.message" class="message-text chat-message-display">
-                    {{ chat.message }}
+                  <div v-if="chat.text" class="message-text chat-message-display">
+                    {{ chat.text }}
                   </div>
                   <div v-if="chat.imageUrl" class="message-image">
                     <img :src="chat.imageUrl" alt="アップロード画像" class="uploaded-image" />
                   </div>
                   <!-- タグ表示（develop版から継承） -->
-                  <div v-if="chat.tag && chat.tag.length > 0" class="message-tags">
-                    <span v-for="tag in chat.tag" :key="tag" class="tag-item">
+                  <div v-if="chat.tags && chat.tags.length > 0" class="message-tags">
+                    <span v-for="tag in chat.tags" :key="tag" class="tag-item">
                       {{ tag }}
                     </span>
                   </div>
@@ -481,13 +505,24 @@ const handleKeydownEnter = (e) => {
             </label>
           </div>
 
+          <!-- チャンネル投稿制限メッセージ -->
+          <div v-if="currentChannel < 0" class="channel-restriction-message">
+            <p>💡 このチャンネルでは投稿できません。投稿するには具体的なチャンネル（引継ぎ、シフト、業務連絡）を選択してください。</p>
+          </div>
+
           <!-- メッセージ入力 -->
-          <textarea :placeholder="`# ${getCurrentChannelInfo.name} に投稿...`" rows="4" class="area" v-model="chatContent"
-            @keydown.enter="handleKeydownEnter"></textarea>
+          <textarea 
+            :placeholder="currentChannel < 0 ? 'このチャンネルでは投稿できません' : `# ${getCurrentChannelInfo.name} に投稿...`" 
+            rows="4" 
+            class="area" 
+            v-model="inputText"
+            :disabled="currentChannel < 0"
+            @keydown.enter="handleKeydownEnter">
+          </textarea>
 
           <!-- 画像選択部分 -->
           <div class="image-section">
-            <input ref="fileInput" type="file" accept="image/*" @change="onImageSelect" class="file-input" />
+            <input ref="fileInput" type="file" accept="image/*" @change="onImageSelect" class="file-input" :disabled="currentChannel < 0" />
             <div v-if="selectedImage" class="selected-image-info">
               選択された画像: {{ selectedImage.name }}
             </div>
@@ -495,11 +530,11 @@ const handleKeydownEnter = (e) => {
 
           <!-- ボタングループ -->
           <div class="button-group">
-            <button class="button-normal button-primary" @click="onPublish" :disabled="isUploading">
-              {{ isUploading ? 'アップロード中...' : '投稿' }}
-            </button>
-            <button class="button-normal" @click="toggleSortOrder">
-              {{ isNewestFirst ? "古い順" : "新しい順" }}
+            <button 
+              class="button-normal button-primary" 
+              @click="onPublish" 
+              :disabled="isUploading || currentChannel < 0">
+              {{ isUploading ? 'アップロード中...' : currentChannel < 0 ? '投稿不可' : '投稿' }}
             </button>
             <button type="button" class="button-normal button-exit" @click="onExit">
               退室する
@@ -937,5 +972,19 @@ const handleKeydownEnter = (e) => {
 
 .date-range .v-text-field {
   flex: 1;
+}
+
+.channel-restriction-message {
+  margin-bottom: 12px;
+  padding: 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  color: #856404;
+}
+
+.channel-restriction-message p {
+  margin: 0;
+  font-size: 14px;
 }
 </style>
