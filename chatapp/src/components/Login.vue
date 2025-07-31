@@ -64,7 +64,7 @@ const onEnter = async () => {
 
 <template>
   <div class="mx-auto my-5 px-4">
-    <h1 class="text-h3 font-weight-medium">Vue.js Chat サンプル</h1>
+    <h1 class="text-h3 font-weight-medium">個別指導塾「Black」</h1>
     
     <!-- Google認証 -->
     <div class="mt-10">
@@ -130,5 +130,9 @@ const onEnter = async () => {
 
 .button-normal:hover {
   background-color: #369870;
+}
+
+.mx-auto {
+  text-align: center;
 }
 </style>
