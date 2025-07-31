@@ -14,6 +14,18 @@ const isNewestFirst = ref(true)
 const selectedImage = ref(null)
 const isUploading = ref(false)
 const fileInput = ref(null)
+const selectedTags = ref([])
+const currentChannel = ref(0)
+
+const availableTags = ref([
+  'お知らせ',
+  '出欠',
+  '生徒名',
+  '担当教師名',
+  '★',
+  '★★',
+  '★★★'
+])
 
 // 並び順に応じたリストを計算
 const sortedChatList = computed(() => {
@@ -33,6 +45,16 @@ onMounted(() => {
 // #endregion
 
 // #region browser event handler
+
+// タグを選択
+const toggleTag = (tag) => {
+  const index = selectedTags.value.indexOf(tag)
+  if (index === -1) {
+    selectedTags.value.push(tag)
+  } else {
+    selectedTags.value.splice(index, 1)
+  }
+}
 // 投稿メッセージをサーバに送信する
 const onPublish = async () => {
   try {
@@ -57,7 +79,7 @@ const onPublish = async () => {
 
     // メッセージまたは画像のいずれかがある場合のみ送信
     if (trimmedContent || imageUrl) {
-      await ChatService.publish(trimmedContent, userName.value, imageUrl, [], 0)
+      await ChatService.publish(trimmedContent, userName.value, imageUrl, selectedTags.value, currentChannel.value)
       chatContent.value = ""
       resetFileInput()
     }
@@ -165,17 +187,24 @@ const handleKeydownEnter = (e) => {
       <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
       <div class="mt-10">
         <p>ログインユーザ：{{ userName }}さん</p>
-        <form action="samplel.cgi" method="post">
-          <p>タグ<br>
-            <select multiple name="sample">
-              <option value="sample">お知らせ</option>
-              <option value="sample">出欠</option>
-              <option value="sample">生徒名</option>
-              <option value="sample">担当教師名</option>
-              <option value="sample">重要度</option>
-            </select>
-          </p>
-        </form>
+        <div class="tag-selection">
+          <p>タグ選択:</p>
+          <div class="tag-buttons">
+            <button
+              v-for="tag in availableTags"
+              :key="tag"
+              @click="toggleTag(tag)"
+              :class="{ 'selected': selectedTags.includes(tag) }"
+              class="tag-button"
+              type="button"
+            >
+             {{ tag }}
+            </button>
+         </div>
+          <div v-if="selectedTags.length > 0" class="selected-tags">
+            選択中: {{ selectedTags.join(', ') }}
+          </div>
+        </div>
 
         <div class="mt-3">
           <label class="expiration-label">
