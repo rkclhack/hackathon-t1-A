@@ -6,10 +6,10 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  getDocs
+  getDocs,
+  where
 } from 'firebase/firestore'
 import AuthService from './AuthService.js'
-import { transformVNodeArgs } from 'vue'
 
 /**
  * チャット通信を担うサービスクラス
@@ -131,6 +131,72 @@ class ChatService {
   }
 
 
+
+  /**
+   * タグをもとにメッセージを検索
+   * @param {string} condition - 検索条件 "and" または "or"
+   * @param {string[]} tags - 検索するタグ配列
+   * @returns {Promise<Array>} 検索条件に一致するメッセージ配列
+   */
+  async searchMessagesByTags(condition = 'and', tags = []) {
+    try {
+
+      if (!tags || tags.length === 0) {
+        return []
+      }
+
+      const messagesRef = collection(db, 'messages')
+      let messagesQuery
+
+      if (condition === 'or') {
+        //指定されたタグのいずれかを含むメッセージを取得
+        messagesQuery = query(
+          messagesRef,
+          where('tag', 'array-contains-any', tags),
+          orderBy('timestamp', 'desc')
+        )
+      } else if (condition === 'and') {
+        // AND検索：Firestoreの制限により、複数のarray-containsは使用できないため
+        // まずは全メッセージを取得してクライアント側でフィルタリング
+        messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'))
+      } else {
+        throw new Error('無効な検索条件です。"and" または "or" を指定してください。')
+      }
+
+      const snapshot = await getDocs(messagesQuery)
+      const messages = []
+
+      snapshot.forEach((doc) => {
+        const data = doc.data()
+        const messageData = {
+          id: doc.id,
+          message: data.message,
+          publisherName: data.publisherName,
+          userID: data.userID,
+          channelID: data.channelID,
+          tag: data.tag || [],
+          imageUrl: data.imageUrl || null,
+          timestamp: data.timestamp
+        }
+
+        // AND検索の場合、クライアント側ですべてのタグが含まれているかチェック
+        if (condition === 'and') {
+          const hasAllTags = tags.every(tag => data.tag && data.tag.includes(tag))
+          if (hasAllTags) {
+            messages.push(messageData)
+          }
+        } else {
+          // OR検索の場合はFirestoreクエリで既にフィルタされているのでそのまま追加
+          messages.push(messageData)
+        }
+      })
+
+      return messages
+    } catch (error) {
+      console.error('タグ検索でエラーが発生しました:', error)
+      return []
+    }
+  }
 
   /**
    * 投稿イベントのハンドラーを登録

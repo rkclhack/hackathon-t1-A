@@ -10,7 +10,7 @@ const router = createRouter({
       path: "/",
       name: "login",
       component: Login
-    },{
+    }, {
       path: "/chat/",
       name: "chat",
       component: Chat,
@@ -19,7 +19,7 @@ const router = createRouter({
         if (AuthService.isAuthenticated() || from.name === "login") {
           next()
         } else {
-          next({ name:"login" })
+          next({ name: "login" })
         }
       },
     }
