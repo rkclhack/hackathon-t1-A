@@ -84,14 +84,6 @@ const resetSearchForm = () => {
   searchChannel.value = ""
 }
 
-// チャンネル別のメッセージを管理
-const channelMessages = reactive({
-  general: [],
-  tech: [],
-  random: [],
-  announcement: []
-})
-
 // 並び順に応じたリストを計算
 const sortedChatList = computed(() => {
   return isNewestFirst.value ? [...chatList].reverse() : [...chatList]
@@ -104,6 +96,7 @@ const toggleSortOrder = () => {
 
 // チャンネルを切り替える
 const switchChannel = (channelId) => {
+  console.log('チャンネル切り替え:', channelId)
   if (currentChannel.value !== channelId) {
     currentChannel.value = channelId
   }
@@ -266,7 +259,11 @@ const handleKeydownEnter = (e) => {
     onPublish()
   }
 }
-// #endregion
+
+// 選択されたチャンネルでフィルタリング
+const filteredChatList = computed(() => {
+  return chatList.filter(chat => chat.channelID === currentChannel.value);
+});
 </script>
 
 <template>
@@ -413,7 +410,7 @@ const handleKeydownEnter = (e) => {
             <p>最初のメッセージを投稿してみましょう！</p>
           </div>
           <ul v-else class="message-list">
-            <li class="chat-item" v-for="(chat, i) in sortedChatList" :key="i">
+            <li class="chat-item" v-for="(chat, i) in filteredChatList" :key="i">
               <!-- 通常のメッセージ（文字列）の場合 -->
               <template v-if="typeof chat === 'string'">
                 <template v-if="chat.includes(':')">
