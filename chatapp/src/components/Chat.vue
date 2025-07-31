@@ -30,8 +30,18 @@ onMounted(() => {
 
 // #region browser event handler
 // 投稿メッセージをサーバに送信する
+// より厳密なバリデーション例
 const onPublish = () =>  {
-  ChatService.publish(chatContent.value, userName.value)
+  const trimmedContent = chatContent.value.trim()
+  
+  // 空文字列、スペースのみ、改行のみをチェック
+  if (!trimmedContent || trimmedContent.length === 0) {
+    // オプション: ユーザーにアラートを表示
+    // alert("メッセージを入力してください")
+    return
+  }
+  
+  ChatService.publish(trimmedContent, userName.value)
   chatContent.value = ""
 }
 
@@ -42,7 +52,17 @@ const onExit = () => {
 
 // メモを画面上に表示する
 const onMemo = () => {
-  const memoMessage = `${userName.value}さんのメモ:${chatContent.value}`
+  // 入力内容をトリム（前後の空白を除去）
+  const trimmedContent = chatContent.value.trim()
+  
+  // 空文字列、スペースのみ、改行のみをチェック
+  if (!trimmedContent || trimmedContent.length === 0) {
+    // オプション: ユーザーにアラートを表示
+    // alert("メモ内容を入力してください")
+    return
+  }
+  
+  const memoMessage = `${userName.value}さんのメモ:${trimmedContent}`
   chatList.push(memoMessage)
   chatContent.value = ""
 }
