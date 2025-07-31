@@ -1,15 +1,15 @@
 import { db } from '../firebase.js'
-import { 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
   serverTimestamp,
-  doc,
-  setDoc,
-  deleteDoc
+  getDocs
 } from 'firebase/firestore'
+import AuthService from './AuthService.js'
+import { transformVNodeArgs } from 'vue'
 
 /**
  * チャット通信を担うサービスクラス
@@ -19,8 +19,6 @@ import {
 class ChatService {
   constructor() {
     this.eventHandlers = {
-      enter: [],
-      exit: [],
       publish: []
     }
     this.unsubscribers = []
@@ -28,83 +26,77 @@ class ChatService {
   }
 
   /**
-   * Firestoreのリスナーを初期化
+   * 初期メッセージを取得
+   * @returns {Promise<Array>} メッセージ配列
+   */
+  async getInitialMessages() {
+    try {
+      const messagesRef = collection(db, 'messages')
+      const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'))
+      const snapshot = await getDocs(messagesQuery)
+
+      const messages = []
+      snapshot.forEach((doc) => {
+        const data = doc.data()
+        messages.push({
+          id: doc.id,
+          message: data.message,
+          publisherName: data.publisherName,
+          userID: data.userID,
+          channelID: data.channelID,
+          tag: data.tag || [],
+          imageUrl: data.imageUrl || null,
+          timestamp: data.timestamp
+        })
+      })
+
+      return messages
+    } catch (error) {
+      console.error('初期メッセージ取得でエラーが発生しました:', error)
+      return []
+    }
+  }
+
+  /**
+   * Firestoreのリスナーを初期化（差分更新のみを監視）
    */
   initializeFirestoreListeners() {
     // メッセージコレクションを監視
     const messagesRef = collection(db, 'messages')
     const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'))
-    
+
+    let isInitialLoad = true
+
     const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
+      // 初回ロードの場合はスキップ（getInitialMessages()で処理済み）
+      if (isInitialLoad) {
+        isInitialLoad = false
+        return
+      }
+
+      // 差分のみを処理
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const data = change.doc.data()
-          
-          // メッセージタイプに応じて適切なハンドラーを呼び出し
-          switch (data.type) {
-            case 'enter':
-              this.eventHandlers.enter.forEach(handler => handler(data.userName))
-              break
-            case 'exit':
-              this.eventHandlers.exit.forEach(handler => handler(data.userName))
-              break
-            case 'message':
-              this.eventHandlers.publish.forEach(handler => handler({
-                message: data.message,
-                publisherName: data.publisherName,
-                imageUrl: data.imageUrl || null
-              }))
-              break
-          }
+
+          this.eventHandlers.publish.forEach(handler => handler({
+            id: change.doc.id,
+            message: data.message,
+            publisherName: data.publisherName,
+            userID: data.userID,
+            channelID: data.channelID,
+            tag: data.tag || [],
+            imageUrl: data.imageUrl || null,
+            timestamp: data.timestamp
+          }))
         }
       })
     })
-    
+
     this.unsubscribers.push(unsubscribeMessages)
   }
 
-  /**
-   * 入室処理
-   * @param {string} userName - ユーザー名
-   */
-  async enter(userName) {
-    try {
-      // 入室メッセージをFirestoreに追加
-      await addDoc(collection(db, 'messages'), {
-        type: 'enter',
-        userName: userName,
-        timestamp: serverTimestamp()
-      })
-      
-      // アクティブユーザーリストに追加
-      await setDoc(doc(db, 'activeUsers', userName), {
-        userName: userName,
-        joinedAt: serverTimestamp()
-      })
-    } catch (error) {
-      console.error('入室処理でエラーが発生しました:', error)
-    }
-  }
 
-  /**
-   * 退室処理
-   * @param {string} userName - ユーザー名
-   */
-  async exit(userName) {
-    try {
-      // 退室メッセージをFirestoreに追加
-      await addDoc(collection(db, 'messages'), {
-        type: 'exit',
-        userName: userName,
-        timestamp: serverTimestamp()
-      })
-      
-      // アクティブユーザーリストから削除
-      await deleteDoc(doc(db, 'activeUsers', userName))
-    } catch (error) {
-      console.error('退室処理でエラーが発生しました:', error)
-    }
-  }
 
   /**
    * メッセージ投稿処理
@@ -112,41 +104,33 @@ class ChatService {
    * @param {string} publisherName - 投稿者名
    * @param {string|null} imageUrl - 画像のURL（オプション）
    */
-  async publish(message, publisherName, imageUrl = null) {
+  async publish(message, publisherName, imageUrl = null, tags = [], channelID = 0) {
     try {
+      // AuthServiceからユーザーIDを取得
+      const currentUser = AuthService.getCurrentUser()
+      const userID = currentUser ? currentUser.uid : null
+
       const messageData = {
-        type: 'message',
         message: message,
         publisherName: publisherName,
+        userID: userID,
+        channelID: channelID,
+        tag: tags,
         timestamp: serverTimestamp()
       }
-      
+
       // 画像URLがある場合は追加
       if (imageUrl) {
         messageData.imageUrl = imageUrl
       }
-      
+
       await addDoc(collection(db, 'messages'), messageData)
     } catch (error) {
       console.error('メッセージ投稿でエラーが発生しました:', error)
     }
   }
 
-  /**
-   * 入室イベントのハンドラーを登録
-   * @param {Function} handler - コールバック関数
-   */
-  onEnter(handler) {
-    this.eventHandlers.enter.push(handler)
-  }
 
-  /**
-   * 退室イベントのハンドラーを登録
-   * @param {Function} handler - コールバック関数
-   */
-  onExit(handler) {
-    this.eventHandlers.exit.push(handler)
-  }
 
   /**
    * 投稿イベントのハンドラーを登録
@@ -163,8 +147,6 @@ class ChatService {
     this.unsubscribers.forEach(unsubscribe => unsubscribe())
     this.unsubscribers = []
     this.eventHandlers = {
-      enter: [],
-      exit: [],
       publish: []
     }
   }
