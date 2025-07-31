@@ -30,6 +30,11 @@ const searchDateFrom = ref("")
 const searchDateTo = ref("")
 const searchChannel = ref("")
 
+const showTagDropdown = ref(false)
+const showDatePicker = ref(false)
+const messagesArea = ref(null)
+const messageTextarea = ref(null)
+
 // サイドバー・チャンネル機能（ui_test版デザインを採用、develop版のチャンネルIDに合わせる）
 const isSidebarOpen = ref(true)
 const channels = ref([
@@ -133,6 +138,8 @@ const switchChannel = (channelId) => {
   console.log('チャンネル切り替え:', channelId)
   if (currentChannel.value !== channelId) {
     currentChannel.value = channelId
+    // チャンネル切り替え時に最下部へスクロール
+    scrollToBottom()
   }
 }
 
@@ -207,6 +214,13 @@ const onPublish = async () => {
       expirationDate.value = ""
       selectedTags.value = []
       resetFileInput()
+
+      // テキストエリアのサイズをリセット
+      if (messageTextarea.value) {
+        messageTextarea.value.style.height = 'auto'
+      }
+      // ドロップダウンを閉じる
+      closeAllDropdowns()
     }
   } catch (error) {
     console.error('投稿に失敗しました:', error)
@@ -263,6 +277,7 @@ const onReceivePublish = (data) => {
       timestamp: data.timestamp
     }
     chatList.push(messageObj)
+    scrollToBottom() // 新しいメッセージ受信時に最下部へスクロール
   } catch (error) {
     console.error('投稿メッセージ処理エラー:', error)
   }
@@ -276,6 +291,7 @@ const loadInitialMessages = async () => {
     const initialMessages = await ChatService.getInitialMessages()
     chatList.push(...initialMessages)
     console.log(chatList)
+    scrollToBottom() // 初期読み込み時も最下部へスクロール
   } catch (error) {
     console.error('初期メッセージの読み込みに失敗しました:', error)
   }
@@ -301,11 +317,59 @@ const handleKeydownEnter = (e) => {
   }
 }
 
+// テキストエリアの自動リサイズ
+const autoResizeTextarea = () => {
+  if (messageTextarea.value) {
+    messageTextarea.value.style.height = 'auto'
+    const scrollHeight = messageTextarea.value.scrollHeight
+    const maxHeight = 60 // 最大3行分（20px * 3）
+    messageTextarea.value.style.height = Math.min(scrollHeight, maxHeight) + 'px'
+  }
+}
+
+// メッセージエリアを最下部にスクロール
+const scrollToBottom = () => {
+  if (messagesArea.value) {
+    setTimeout(() => {
+      messagesArea.value.scrollTop = messagesArea.value.scrollHeight
+    }, 100)
+  }
+}
+
+// タグドロップダウンの開閉
+const toggleTagDropdown = () => {
+  showTagDropdown.value = !showTagDropdown.value
+  if (showDatePicker.value) showDatePicker.value = false
+}
+
+// 日付ピッカーの開閉
+const toggleDatePicker = () => {
+  showDatePicker.value = !showDatePicker.value
+  if (showTagDropdown.value) showTagDropdown.value = false
+}
+
+// 日付ピッカーを閉じる
+const closeDatePicker = () => {
+  showDatePicker.value = false
+}
+
+// 日付をクリア
+const clearDate = () => {
+  expirationDate.value = ""
+  showDatePicker.value = false
+}
+
+// 全てのドロップダウンを閉じる
+const closeAllDropdowns = () => {
+  showTagDropdown.value = false
+  showDatePicker.value = false
+}
+
 </script>
 
 <template>
   <div class="chat-app">
-    <!-- サイドバー（ui_test版デザインを採用） -->
+    <!-- サイドバー -->
     <div class="sidebar" :class="{ 'sidebar-closed': !isSidebarOpen }">
       <div class="sidebar-header">
         <h3>チャンネル</h3>
@@ -334,14 +398,18 @@ const handleKeydownEnter = (e) => {
       </div>
     </div>
 
-    <!-- メインコンテンツ（ui_test版デザインを採用） -->
+    <!-- メインコンテンツ -->
     <div class="main-content" :class="{ 'main-content-full': !isSidebarOpen }">
+      <!-- 検索セクション -->
       <div class="search-section">
         <div class="search-row">
           <v-combobox 
             label="ラベル検索" 
             :items="['California', 'Colorado', 'Florida', 'Georgia', 'Texas', 'Wyoming']"
             class="search-combobox"
+            density="compact"
+            variant="outlined"
+            hide-details
           ></v-combobox>
           
           <!-- 詳細検索ダイアログ -->
@@ -352,6 +420,7 @@ const handleKeydownEnter = (e) => {
                 color="primary"
                 variant="outlined"
                 class="search-detail-btn"
+                size="small"
               >
                 詳細検索
               </v-btn>
@@ -360,25 +429,6 @@ const handleKeydownEnter = (e) => {
             <template v-slot:default="{ isActive }">
               <v-card title="詳細検索">
                 <v-card-text>
-                  <!-- キーワード検索 -->
-                  <!---<v-text-field-
-                    v-model="searchKeyword"
-                    label="キーワード"
-                    placeholder="メッセージ内容を検索..."
-                    class="mb-3" 
-                  ></v-text-field> -->
-
-                  <!-- タグ選択 -->
-                  <!--<v-select
-                    v-model="searchTags"
-                    :items="availableTags"
-                    label="タグ"
-                    multiple
-                    chips
-                    closable-chips
-                    class="mb-3"
-                  ></v-select> -->
-
                   <!-- 期間選択 -->
                   <div class="date-range mb-3">
                     <v-text-field
@@ -430,20 +480,10 @@ const handleKeydownEnter = (e) => {
           </v-dialog>
         </div>
       </div>
-      
-      <!--
-      <div class="chat-header">
-        <div class="current-channel">
-          <span class="current-channel-icon">{{ getCurrentChannelInfo.icon }}</span>
-          <h1 class="current-channel-name"># {{ getCurrentChannelInfo.name }}</h1>
-          <span class="current-channel-desc">{{ getCurrentChannelInfo.description }}</span>
-        </div>
-      </div>
-    -->
 
       <div class="chat-container">
         <!-- メッセージ表示エリア -->
-        <div class="messages-area">
+        <div class="messages-area" ref="messagesArea">
           <div v-if="filteredChatList.length === 0" class="no-messages">
             <p>{{ getCurrentChannelInfo.icon }} # {{ getCurrentChannelInfo.name }} チャンネルにはまだメッセージがありません</p>
             <p v-if="currentChannel >= 0">最初のメッセージを投稿してみましょう！</p>
@@ -472,7 +512,7 @@ const handleKeydownEnter = (e) => {
                   <div v-if="chat.imageUrl" class="message-image">
                     <img :src="chat.imageUrl" alt="アップロード画像" class="uploaded-image" />
                   </div>
-                  <!-- タグ表示（develop版から継承） -->
+                  <!-- タグ表示 -->
                   <div v-if="chat.tags && chat.tags.length > 0" class="message-tags">
                     <span v-for="tag in chat.tags" :key="tag" class="tag-item">
                       {{ tag }}
@@ -490,74 +530,135 @@ const handleKeydownEnter = (e) => {
 
         <!-- 入力エリア -->
         <div class="input-area">
-          <p class="user-status">ログインユーザ：{{ userName }}さん</p>
-
-          <!-- タグ選択（develop版から継承） -->
-          <div class="tag-selection">
-            <p>タグ選択:</p>
-            <div class="tag-buttons">
-              <button
-                v-for="tag in availableTags"
-                :key="tag"
-                @click="toggleTag(tag)"
-                :class="{ 'selected': selectedTags.includes(tag) }"
-                class="tag-button"
-                type="button"
-              >
-               {{ tag }}
-              </button>
-           </div>
-            <div v-if="selectedTags.length > 0" class="selected-tags">
-              選択中: {{ selectedTags.join(', ') }}
-            </div>
-          </div>
-
-          <!-- 有効期間選択 -->
-          <div class="expiration-section">
-            <label class="expiration-label">
-              有効期間を選択してください（オプション）:
-              <input type="date" name="expiration" v-model="expirationDate" class="date-input"
-                :min="new Date().toISOString().split('T')[0]" />
-            </label>
-          </div>
-
           <!-- チャンネル投稿制限メッセージ -->
           <div v-if="currentChannel < 0" class="channel-restriction-message">
-            <p>💡 このチャンネルでは投稿できません。投稿するには具体的なチャンネル（引継ぎ、シフト、業務連絡）を選択してください。</p>
+            💡 このチャンネルでは投稿できません。投稿するには具体的なチャンネル（引継ぎ、シフト、業務連絡）を選択してください。
           </div>
 
-          <!-- メッセージ入力 -->
-          <textarea 
-            :placeholder="currentChannel < 0 ? 'このチャンネルでは投稿できません' : `# ${getCurrentChannelInfo.name} に投稿...`" 
-            rows="4" 
-            class="area" 
-            v-model="inputText"
-            :disabled="currentChannel < 0"
-            @keydown.enter="handleKeydownEnter">
-          </textarea>
-
-          <!-- 画像選択部分 -->
-          <div class="image-section">
-            <input ref="fileInput" type="file" accept="image/*" @change="onImageSelect" class="file-input" :disabled="currentChannel < 0" />
-            <div v-if="selectedImage" class="selected-image-info">
-              選択された画像: {{ selectedImage.name }}
+          <div class="input-container">
+            <!-- メッセージ入力とボタン -->
+            <div class="input-row">
+              <div class="input-wrapper">
+                <textarea 
+                  :placeholder="currentChannel < 0 ? 'このチャンネルでは投稿できません' : `# ${getCurrentChannelInfo.name} に投稿...`" 
+                  class="message-input" 
+                  v-model="inputText"
+                  :disabled="currentChannel < 0"
+                  @keydown.enter="handleKeydownEnter"
+                  @input="autoResizeTextarea"
+                  ref="messageTextarea"
+                  rows="1">
+                </textarea>
+                
+                <!-- 投稿ボタン -->
+                <button 
+                  class="send-button" 
+                  @click="onPublish" 
+                  :disabled="isUploading || currentChannel < 0"
+                  title="投稿 (Ctrl+Enter)">
+                  {{ isUploading ? '⏳' : '📤' }}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- ボタングループ -->
-          <div class="button-group">
-            <button 
-              class="button-normal button-primary" 
-              @click="onPublish" 
-              :disabled="isUploading || currentChannel < 0">
-              {{ isUploading ? 'アップロード中...' : currentChannel < 0 ? '投稿不可' : '投稿' }}
-            </button>
-            <button type="button" class="button-normal button-exit" @click="onExit">
-              退室する
-            </button>
+            <!-- 機能ボタン行 -->
+            <div class="function-buttons">
+              <!-- ファイル選択 -->
+              <div class="function-button-group">
+                <button 
+                  class="function-button" 
+                  @click="$refs.fileInput.click()" 
+                  :disabled="currentChannel < 0"
+                  title="ファイルを添付">
+                  📎
+                </button>
+                <input 
+                  ref="fileInput" 
+                  type="file" 
+                  accept="image/*" 
+                  @change="onImageSelect" 
+                  class="hidden-file-input" 
+                  :disabled="currentChannel < 0" 
+                />
+                <span v-if="selectedImage" class="attachment-info">{{ selectedImage.name }}</span>
+              </div>
+
+              <!-- タグ選択 -->
+              <div class="function-button-group" style="position: relative;">
+                <button 
+                  class="function-button" 
+                  @click="toggleTagDropdown" 
+                  :disabled="currentChannel < 0"
+                  title="タグを選択">
+                  🏷️
+                </button>
+                <span v-if="selectedTags.length > 0" class="tag-info">{{ selectedTags.join(', ') }}</span>
+                
+                <!-- タグドロップダウン -->
+                <div v-if="showTagDropdown" class="tag-dropdown" @click.stop>
+                  <div class="tag-dropdown-header">タグを選択</div>
+                  <div class="tag-options">
+                    <label 
+                      v-for="tag in availableTags" 
+                      :key="tag" 
+                      class="tag-option">
+                      <input 
+                        type="checkbox" 
+                        :value="tag" 
+                        v-model="selectedTags"
+                        class="tag-checkbox">
+                      <span class="tag-label">{{ tag }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 有効期間設定 -->
+              <div class="function-button-group" style="position: relative;">
+                <button 
+                  class="function-button" 
+                  @click="toggleDatePicker" 
+                  :disabled="currentChannel < 0"
+                  title="有効期間を設定">
+                  📅
+                </button>
+                <span v-if="expirationDate" class="date-info">{{ expirationDate }}</span>
+                
+                <!-- 日付ピッカー -->
+                <div v-if="showDatePicker" class="date-picker" @click.stop>
+                  <div class="date-picker-header">
+                    <span>有効期間設定</span>
+                    <button class="close-button" @click="closeDatePicker">×</button>
+                  </div>
+                  <input 
+                    type="date" 
+                    v-model="expirationDate" 
+                    class="date-input"
+                    :min="new Date().toISOString().split('T')[0]" 
+                  />
+                  <div class="date-picker-actions">
+                    <button class="clear-date-button" @click="clearDate">クリア</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 退室ボタン -->
+              <div class="function-button-group exit-group">
+                <button class="exit-button" @click="onExit" title="退室する">
+                  🚪 退室
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- オーバーレイ（ドロップダウン・ピッカーを閉じるため） -->
+    <div 
+      v-if="showTagDropdown || showDatePicker" 
+      class="overlay" 
+      @click="closeAllDropdowns">
     </div>
   </div>
 </template>
@@ -567,7 +668,7 @@ const handleKeydownEnter = (e) => {
   display: flex;
   height: 100vh;
   background-color: #f5f5f5;
-  overflow: hidden; /* 全体のスクロールを無効 */
+  overflow: hidden;
 }
 
 .sidebar {
@@ -584,22 +685,8 @@ const handleKeydownEnter = (e) => {
   width: 60px;
 }
 
-/* メインコンテンツエリア */
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column; /* 縦方向に配置 */
-  transition: all 0.3s ease;
-  height: 100vh; /* 高さを固定 */
-  overflow: hidden; /* メインコンテンツ自体はスクロールしない */
-}
-
-.main-content-full {
-  margin-left: 0;
-}
-
 .sidebar-header {
-  padding: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid #34495e;
   display: flex;
   justify-content: space-between;
@@ -608,7 +695,7 @@ const handleKeydownEnter = (e) => {
 
 .sidebar-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .sidebar-toggle {
@@ -616,7 +703,8 @@ const handleKeydownEnter = (e) => {
   border: none;
   color: white;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
+  padding: 4px;
 }
 
 .sidebar-content {
@@ -625,41 +713,41 @@ const handleKeydownEnter = (e) => {
 }
 
 .user-info {
-  padding: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid #34495e;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: #3498db;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .user-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .channel-list {
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .channel-item {
-  padding: 12px 16px;
+  padding: 8px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   position: relative;
 }
 
@@ -672,8 +760,8 @@ const handleKeydownEnter = (e) => {
 }
 
 .channel-icon {
-  font-size: 20px;
-  width: 24px;
+  font-size: 16px;
+  width: 20px;
   text-align: center;
 }
 
@@ -683,17 +771,17 @@ const handleKeydownEnter = (e) => {
 
 .channel-name {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .channel-desc {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.8;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .channel-indicator {
-  width: 4px;
+  width: 3px;
   height: 100%;
   position: absolute;
   left: 0;
@@ -711,270 +799,15 @@ const handleKeydownEnter = (e) => {
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
+  min-width: 0;
 }
 
 .main-content-full {
   margin-left: 0;
 }
 
-.chat-header {
-  display: none;
-}
-
-.current-channel {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.current-channel-icon {
-  font-size: 18px;
-}
-
-.current-channel-name {
-  margin: 0;
-  font-size: 18px;
-  color: #2c3e50;
-}
-
-.current-channel-desc {
-  color: #7f8c8d;
-  font-size: 14px;
-}
-
-.chat-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: white;
-  min-height: 0;
-}
-
-.messages-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px;
-}
-
-.no-messages {
-  text-align: center;
-  color: #7f8c8d;
-  padding: 40px 20px;
-}
-
-.message-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.input-area {
-  padding: 12px 16px;
-  border-top: 1px solid #e0e0e0;
-  background-color: #fafafa;
-  flex-shrink: 0;
-}
-
-.user-status {
-  display: none;
-}
-
-.tag-section,
-.expiration-section,
-.image-section {
-  margin-bottom: 8px;
-}
-
-.tag-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0;
-}
-
-.tag-button {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background-color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.tag-button:hover {
-  background-color: #f0f0f0;
-}
-
-.tag-button.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-.selected-tags {
-  font-size: 14px;
-  color: #666;
-  margin-top: 10px;
-}
-
-.expiration-section,
-.image-section {
-  margin-bottom: 8px;
-}
-
-.tag-select {
-  margin-left: 8px;
-  padding: 4px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.expiration-label {
-  display: block;
-  font-size: 13px;
-  color: #333;
-}
-
-.date-input {
-  margin-left: 8px;
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.area {
-  width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 14px;
-  resize: vertical;
-  min-height: 100px;
-  margin-bottom: 12px;
-}
-
-.file-input {
-  padding: 3px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.selected-image-info {
-  margin-top: 3px;
-  font-size: 12px;
-  color: #666;
-}
-
-.button-group {
-  display: none;
-}
-
-.button-normal {
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.button-normal:hover {
-  background-color: #f0f0f0;
-}
-
-.button-primary {
-  background-color: #3498db;
-  color: white;
-  border-color: #3498db;
-}
-
-.button-primary:hover {
-  background-color: #2980b9;
-}
-
-.button-exit {
-  background-color: #e74c3c;
-  color: white;
-  border-color: #e74c3c;
-}
-
-.button-exit:hover {
-  background-color: #c0392b;
-}
-
-.chat-item {
-  display: flex;
-  align-items: flex-start;
-  margin-top: 16px;
-}
-
-.chat-publisher {
-  flex-shrink: 0;
-  margin-right: 5px;
-  display: block;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.chat-content {
-  flex-grow: 1;
-  min-width: 0;
-  display: block;
-}
-
-.chat-message-display {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.message-container {
-  flex-grow: 1;
-  min-width: 0;
-  padding-left: 8px;
-}
-
-.message-header {
-  font-weight: bold;
-  margin-bottom: 4px;
-  color: #2c3e50;
-}
-
-.message-text {
-  margin-bottom: 8px;
-}
-
-.message-image {
-  margin-top: 8px;
-}
-
-.uploaded-image {
-  max-width: 300px;
-  max-height: 200px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-}
-
-.message-tags {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.tag-item {
-  background-color: #e9ecef;
-  color: #495057;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  border: 1px solid #dee2e6;
-}
 .search-section {
-  padding: 8px 16px;
+  padding: 6px 12px;
   background-color: white;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
@@ -983,12 +816,12 @@ const handleKeydownEnter = (e) => {
 .search-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .search-combobox {
   flex: 1;
-  max-width: 400px;
+  max-width: 300px;
 }
 
 .search-detail-btn {
@@ -1004,23 +837,369 @@ const handleKeydownEnter = (e) => {
   flex: 1;
 }
 
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  min-height: 0;
+  overflow: visible;
+}
+
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px;
+  scroll-behavior: smooth;
+}
+
+.no-messages {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 20px;
+}
+
+.message-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chat-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.chat-publisher {
+  flex-shrink: 0;
+  margin-right: 8px;
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.chat-content {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.chat-message-display {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message-container {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.message-header {
+  font-weight: bold;
+  margin-bottom: 2px;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.message-text {
+  margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message-image {
+  margin-top: 4px;
+}
+
+.uploaded-image {
+  max-width: 300px;
+  max-height: 200px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.message-tags {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.tag-item {
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  border: 1px solid #dee2e6;
+}
+
+.message-expiration {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.input-area {
+  padding: 8px 16px 12px 16px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #fafafa;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
 .channel-restriction-message {
-  margin-bottom: 12px;
-  padding: 12px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
   background-color: #fff3cd;
   border: 1px solid #ffeaa7;
   border-radius: 4px;
   color: #856404;
+  font-size: 13px;
 }
 
-.channel-restriction-message p {
-  margin: 0;
-  font-size: 14px;
+.input-container {
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: visible;
 }
-.message-expiration {
-  margin-top: 8px;
+
+.input-row {
+  display: flex;
+  align-items: flex-end;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+}
+
+.message-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px;
+  font-size: 14px;
+  resize: none;
+  min-height: 20px;
+  max-height: 60px;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+.message-input:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+}
+
+.send-button {
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 18px;
+  color: #3498db;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.send-button:hover:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.send-button:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.function-buttons {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.function-button-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.function-button {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.function-button:hover:not(:disabled) {
+  background-color: #e9ecef;
+}
+
+.function-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.attachment-info, .tag-info, .date-info {
+  font-size: 11px;
+  color: #666;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exit-group {
+  margin-left: auto;
+}
+
+.exit-button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 12px;
-  color: #6c757d;
-  font-style: italic;
+  transition: background-color 0.2s;
+}
+
+.exit-button:hover {
+  background-color: #c0392b;
+}
+
+/* ドロップダウン・ピッカー */
+.tag-dropdown, .date-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 2000;
+  min-width: 180px;
+  margin-bottom: 4px;
+}
+
+.tag-dropdown-header, .date-picker-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  font-weight: 500;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-options {
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tag-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tag-checkbox {
+  margin: 0;
+}
+
+.tag-label {
+  flex: 1;
+}
+
+.date-input {
+  margin: 8px 12px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  width: calc(100% - 24px);
+}
+
+.date-picker-actions {
+  padding: 8px 12px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+
+.clear-date-button {
+  background: none;
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+}
+
+.clear-date-button:hover {
+  background-color: #f0f0f0;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1999;
+}
+
+/* メッセージエリアを最下部にスクロール */
+.messages-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-area::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.messages-area::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.messages-area::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style>
