@@ -21,6 +21,7 @@ const expirationDate = ref("")
 
 // タグ選択機能（develop版から継承）
 const selectedTags = ref([])
+const selectedSearchTags = ref([])
 
 // 詳細検索用の変数を追加
 const searchDialog = ref(false)
@@ -39,7 +40,6 @@ const messageTextarea = ref(null)
 const isSidebarOpen = ref(true)
 const channels = ref([
   { id: -1, name: "すべて", description: "全てのメッセージ", icon: "🌐", color: "#6c757d" },
-  { id: -2, name: "その他", description: "分類されていないメッセージ", icon: "📝", color: "#6c757d" },
   { id: 0, name: "引継ぎ", description: "引継ぎ事項", icon: "📋", color: "#28a745" },
   { id: 1, name: "シフト", description: "シフト調整", icon: "📅", color: "#007bff" },
   { id: 2, name: "業務連絡", description: "業務に関する連絡", icon: "📢", color: "#ffc107" }
@@ -69,47 +69,56 @@ const getCurrentChannelInfo = computed(() => {
   }
 })
 
-// チャンネル別にフィルタリングされたメッセージリスト
+// メッセージのフィルタリング
 const filteredChatList = computed(() => {
-  const currentChannelId = currentChannel.value
-  
-  // 「すべて」チャンネル: 全メッセージを表示
-  if (currentChannelId === -1) {
-    return chatList
-  }
-  
-  // 「その他」チャンネル: channelIDがnull/undefinedのメッセージを表示
-  if (currentChannelId === -2) {
-    return chatList.filter(message => {
-      // 文字列メッセージ（古い形式）は「その他」に表示
-      if (typeof message === 'string') {
-        return true
-      }
-      // channelIDがnull/undefinedのメッセージ
-      return message.channelID == null || message.channelID === undefined
-    })
-  }
-  
-  // 特定チャンネル: 該当するchannelIDのメッセージのみ表示
-  return chatList.filter(message => {
-    // 文字列メッセージ（古い形式）は表示しない
-    if (typeof message === 'string') {
-      return false
+  const currentChannelId = currentChannel.value;
+  const selectedTags = selectedSearchTags.value;
+  const dateFrom = searchDateFrom.value ? new Date(searchDateFrom.value) : null;
+  const dateTo = searchDateTo.value ? new Date(searchDateTo.value) : null;
+
+  return chatList.filter((message) => {
+    // チャンネルIDによるフィルタリング
+    if (currentChannelId !== -1 && typeof message !== 'string' && message.channelID !== currentChannelId) {
+      return false;
     }
-    // channelIDが一致するメッセージのみ
-    return message.channelID === currentChannelId
-  })
+
+    // タグによるフィルタリング
+    if (selectedTags.length > 0) {
+      if (!message.tags || !selectedTags.every(tag => message.tags.includes(tag))) {
+        return false;
+      }
+    }
+
+    // 有効日によるフィルタリング
+    if (dateFrom || dateTo) {
+      const expirationDate = message.expirationDate ? new Date(message.expirationDate) : null;
+
+      if (expirationDate) {
+        if (dateFrom && expirationDate < dateFrom) {
+          return false;
+        }
+        if (dateTo && expirationDate > dateTo) {
+          return false;
+        }
+      } else {
+        // 有効日がないメッセージは除外
+        return false;
+      }
+    }
+
+    return true;
+  });
 })
 
 // 詳細検索実行
 const executeDetailedSearch = () => {
-  console.log('詳細検索実行:', {
-    keyword: searchKeyword.value,
-    tags: searchTags.value,
-    dateFrom: searchDateFrom.value,
-    dateTo: searchDateTo.value,
-    channel: searchChannel.value
-  })
+  // console.log('詳細検索実行:', {
+  //   keyword: searchKeyword.value,
+  //   tags: searchTags.value,
+  //   dateFrom: searchDateFrom.value,
+  //   dateTo: searchDateTo.value,
+  //   channel: searchChannel.value
+  // })
   // ここで実際の検索処理を実装
   searchDialog.value = false
 }
@@ -135,7 +144,6 @@ const toggleSortOrder = () => {
 
 // チャンネルを切り替える
 const switchChannel = (channelId) => {
-  console.log('チャンネル切り替え:', channelId)
   if (currentChannel.value !== channelId) {
     currentChannel.value = channelId
     // チャンネル切り替え時に最下部へスクロール
@@ -171,10 +179,20 @@ const toggleTag = (tag) => {
   }
 }
 
+// 検索用タグ選択
+const toggleSearchTag = (tag) => {
+  const index = selectedSearchTags.value.indexOf(tag)
+  if (index === -1) {
+    selectedSearchTags.value.push(tag)
+  } else {
+    selectedSearchTags.value.splice(index, 1)
+  }
+}
+
 // 投稿メッセージをサーバに送信する（develop版のタグ機能を使用）
 const onPublish = async () => {
   try {
-    // 「すべて」「その他」チャンネルでは投稿不可
+    // 「すべて」チャンネルでは投稿不可
     if (currentChannel.value < 0) {
       alert('このチャンネルでは投稿できません。投稿するチャンネルを選択してください。')
       return
@@ -276,8 +294,17 @@ const onReceivePublish = (data) => {
       expirationDate: data.expirationDate || null,
       timestamp: data.timestamp
     }
+
+    // 応急処置
+    if (messageObj.timestamp == null) {
+      messageObj.timestamp = {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+      }
+    }
+
     chatList.push(messageObj)
-    scrollToBottom() // 新しいメッセージ受信時に最下部へスクロール
+    scrollToBottom()
   } catch (error) {
     console.error('投稿メッセージ処理エラー:', error)
   }
@@ -296,7 +323,6 @@ const loadInitialMessages = async () => {
     }))
 
     chatList.push(...convertedMessages)
-    console.log(chatList)
     scrollToBottom() // 初期読み込み時も最下部へスクロール
   } catch (error) {
     console.error('初期メッセージの読み込みに失敗しました:', error)
@@ -371,6 +397,18 @@ const closeAllDropdowns = () => {
   showDatePicker.value = false
 }
 
+const formatTimestamp = (timestamp) => {
+  if (timestamp && typeof timestamp.seconds === 'number') {
+    const date = new Date(timestamp.seconds * 1000); // 秒をミリ秒に変換
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+  }
+  return '不明な日時';
+};
 </script>
 
 <template>
@@ -409,14 +447,17 @@ const closeAllDropdowns = () => {
       <!-- 検索セクション -->
       <div class="search-section">
         <div class="search-row">
-          <v-combobox 
-            label="ラベル検索" 
-            :items="['California', 'Colorado', 'Florida', 'Georgia', 'Texas', 'Wyoming']"
-            class="search-combobox"
-            density="compact"
-            variant="outlined"
-            hide-details
-          ></v-combobox>
+          <!-- タグボタン -->
+          <button
+            v-for="tag in availableTags"
+            :key="tag"
+            @click="toggleSearchTag(tag)"
+            :class="{ 'selected': selectedSearchTags.includes(tag) }"
+            class="tag-button"
+            type="button"
+          >
+            {{ tag }}
+          </button>
           
           <!-- 詳細検索ダイアログ -->
           <v-dialog v-model="searchDialog" max-width="600">
@@ -427,13 +468,14 @@ const closeAllDropdowns = () => {
                 variant="outlined"
                 class="search-detail-btn"
                 size="small"
+                :class="{ 'active-search': searchDateFrom || searchDateTo }"
               >
-                詳細検索
+                有効期間
               </v-btn>
             </template>
 
             <template v-slot:default="{ isActive }">
-              <v-card title="詳細検索">
+              <v-card title="有効期間">
                 <v-card-text>
                   <!-- 期間選択 -->
                   <div class="date-range mb-3">
@@ -449,16 +491,6 @@ const closeAllDropdowns = () => {
                       type="date"
                     ></v-text-field>
                   </div>
-
-                  <!-- チャンネル選択 -->
-                  <v-select
-                    v-model="searchChannel"
-                    :items="channels"
-                    item-title="name"
-                    item-value="id"
-                    label="チャンネル"
-                    class="mb-3"
-                  ></v-select>
                 </v-card-text> 
 
                 <v-card-actions>
@@ -524,9 +556,14 @@ const closeAllDropdowns = () => {
                       {{ tag }}
                     </span>
                   </div>
-                  <!-- 有効日表示 -->
-                  <div v-if="chat.expirationDate" class="message-expiration">
-                    有効日: {{ chat.expirationDate }}
+                  <!-- メタデータ表示 -->
+                  <div class="message-metadata">
+                    <div class="message-timestamp">
+                      {{ formatTimestamp(chat.timestamp) }}
+                    </div>
+                    <div v-if="chat.expirationDate" class="message-expiration">
+                      有効日: {{ chat.expirationDate }}
+                    </div>
                   </div>
                 </div>
               </template>
@@ -832,6 +869,13 @@ const closeAllDropdowns = () => {
 
 .search-detail-btn {
   flex-shrink: 0;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.search-detail-btn.active-search {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
 }
 
 .date-range {
@@ -944,10 +988,15 @@ const closeAllDropdowns = () => {
   border: 1px solid #dee2e6;
 }
 
-.message-expiration {
-  margin-top: 4px;
+.message-metadata {
+  display: flex;
+  gap: 12px;
   font-size: 11px;
   color: #6c757d;
+  margin-top: 4px;
+}
+.message-timestamp,
+.message-expiration {
   font-style: italic;
 }
 
@@ -1090,6 +1139,27 @@ const closeAllDropdowns = () => {
 
 .exit-button:hover {
   background-color: #c0392b;
+}
+
+/* タグボタンのスタイル */
+.tag-button {
+  padding: 3px 7px;
+  margin: 4px 0px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  /* background-color: #f8f9fa; */
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tag-button:hover {
+  background-color: #e9ecef;
+}
+
+.tag-button.selected {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
 }
 
 /* ドロップダウン・ピッカー */
