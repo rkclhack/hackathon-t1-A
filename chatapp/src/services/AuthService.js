@@ -1,9 +1,16 @@
-import { auth, googleProvider } from '../firebase.js'
+import { auth, googleProvider, db } from '../firebase.js'
 import { 
   signInWithPopup, 
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth'
+import { 
+  collection, 
+  addDoc,
+  doc,
+  setDoc,
+  getDoc 
+} from 'firebase/firestore'
 
 /**
  * Firebase Authentication を管理するサービスクラス
@@ -27,6 +34,27 @@ class AuthService {
   async signInWithGoogle() {
     try {
       const result = await signInWithPopup(auth, googleProvider)
+      
+      // ユーザードキュメントの参照を作成
+      const userDocRef = doc(db, 'users', result.user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      if (userDoc.exists()) {
+        // 既存ユーザーの場合、最終ログイン時刻のみ更新
+        await setDoc(userDocRef, {
+          lastLoginAt: new Date()
+        }, { merge: true })
+      } else {
+        // 新規ユーザーの場合、完全なユーザーデータを作成
+        const userData = {
+          uid: result.user.uid,
+          name: result.user.displayName,
+          createdAt: new Date(),
+          lastLoginAt: new Date()
+        }
+        await setDoc(userDocRef, userData)
+      }
+      
       return result.user
     } catch (error) {
       console.error('Google認証エラー:', error)
