@@ -6,10 +6,12 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "import-demo": "node src/import_firestore.js"
   },
   "dependencies": {
     "firebase": "^12.0.0",
+    "firebase-admin": "^12.0.0",
     "firebase-tools": "^13.35.1",
     "socket.io": "^4.5.3",
     "socket.io-client": "^4.5.3",

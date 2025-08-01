@@ -1,0 +1,184 @@
+{
+  "users": {
+    "teacher_tanaka": {
+      "uid": "teacher_tanaka",
+      "name": "田中先生",
+      "email": "tanaka@juku-example.com",
+      "role": "正社員",
+      "subjects": ["数学"],
+      "grade": "中学1年〜高校3年",
+      "experience": "8年",
+      "qualification": ["数学検定1級", "教員免許（中高数学）"],
+      "schedule": {
+        "monday": ["17:00-18:30", "19:00-20:30"],
+        "tuesday": ["18:00-19:30", "20:00-21:30"],
+        "wednesday": ["17:00-18:30", "19:00-20:30"],
+        "thursday": ["18:00-19:30", "20:00-21:30"],
+        "friday": ["17:00-18:30", "19:00-20:30"],
+        "saturday": ["14:00-15:30", "16:00-17:30", "18:00-19:30"]
+      },
+      "profile": {
+        "introduction": "数学の魅力を伝えることを大切にしています。苦手な生徒も基礎から丁寧に指導します。",
+        "motto": "数学は積み重ね。一歩ずつ確実に！"
+      },
+      "createdAt": {
+        "seconds": 1700000000,
+        "nanoseconds": 0
+      },
+      "lastLoginAt": {
+        "seconds": 1733129500,
+        "nanoseconds": 0
+      }
+    },
+    "teacher_sato": {
+      "uid": "teacher_sato",
+      "name": "佐藤先生",
+      "email": "sato@university-student.com",
+      "role": "大学生アルバイト",
+      "subjects": ["英語"],
+      "grade": "中学1年〜高校2年",
+      "experience": "2年",
+      "qualification": ["英検準1級", "TOEIC 850点"],
+      "university": "〇〇大学 外国語学部3年",
+      "schedule": {
+        "monday": ["19:00-20:30"],
+        "wednesday": ["18:00-19:30", "20:00-21:30"],
+        "friday": ["19:00-20:30"],
+        "saturday": ["16:00-17:30", "18:00-19:30"]
+      },
+      "profile": {
+        "introduction": "英語を楽しく学べるよう、実践的な指導を心がけています。留学経験を活かした生きた英語を教えます。",
+        "motto": "英語は世界への扉。一緒に開きましょう！"
+      },
+      "createdAt": {
+        "seconds": 1700050000,
+        "nanoseconds": 0
+      },
+      "lastLoginAt": {
+        "seconds": 1733128000,
+        "nanoseconds": 0
+      }
+    },
+    "teacher_yamada": {
+      "uid": "teacher_yamada",
+      "name": "山田先生",
+      "email": "yamada@juku-example.com",
+      "role": "正社員",
+      "subjects": ["国語", "社会"],
+      "grade": "小学4年〜中学3年",
+      "experience": "12年",
+      "qualification": ["教員免許（小学校・中学国語）", "漢字検定準1級"],
+      "schedule": {
+        "monday": ["17:00-18:30", "19:00-20:30"],
+        "tuesday": ["17:00-18:30", "19:00-20:30"],
+        "wednesday": ["17:00-18:30"],
+        "thursday": ["17:00-18:30", "19:00-20:30"],
+        "friday": ["17:00-18:30", "19:00-20:30"],
+        "saturday": ["14:00-15:30", "16:00-17:30"]
+      },
+      "profile": {
+        "introduction": "読解力と表現力の向上を重視した指導を行います。保護者との連携も大切にしています。",
+        "motto": "言葉の力で未来を切り開こう"
+      },
+      "createdAt": {
+        "seconds": 1695000000,
+        "nanoseconds": 0
+      },
+      "lastLoginAt": {
+        "seconds": 1733127300,
+        "nanoseconds": 0
+      }
+    },
+    "teacher_suzuki": {
+      "uid": "teacher_suzuki",
+      "name": "鈴木先生",
+      "email": "suzuki@graduate-student.com",
+      "role": "大学院生アルバイト",
+      "subjects": ["理科（物理・化学）"],
+      "grade": "中学1年〜高校3年",
+      "experience": "3年",
+      "qualification": ["危険物取扱者", "物理検定準1級"],
+      "university": "△△大学 理学部物理学科 修士課程1年",
+      "schedule": {
+        "tuesday": ["19:00-20:30", "20:45-22:15"],
+        "thursday": ["19:00-20:30", "20:45-22:15"],
+        "saturday": ["18:00-19:30", "20:00-21:30"],
+        "sunday": ["14:00-15:30", "16:00-17:30"]
+      },
+      "profile": {
+        "introduction": "実験や具体例を交えて、理科の面白さを伝えています。大学受験の物理・化学もお任せください。",
+        "motto": "理科は身の回りの不思議を解明する学問です"
+      },
+      "createdAt": {
+        "seconds": 1705000000,
+        "nanoseconds": 0
+      },
+      "lastLoginAt": {
+        "seconds": 1733129200,
+        "nanoseconds": 0
+      }
+    },
+    "teacher_takahashi": {
+      "uid": "teacher_takahashi",
+      "name": "高橋先生",
+      "email": "takahashi@juku-example.com",
+      "role": "正社員",
+      "subjects": ["英語", "国語"],
+      "grade": "高校1年〜高校3年",
+      "experience": "6年",
+      "qualification": ["教員免許（高校英語・国語）", "英検1級"],
+      "schedule": {
+        "monday": ["18:00-19:30", "20:00-21:30"],
+        "tuesday": ["18:00-19:30", "20:00-21:30"],
+        "wednesday": ["20:00-21:30"],
+        "thursday": ["18:00-19:30", "20:00-21:30"],
+        "friday": ["18:00-19:30", "20:00-21:30"],
+        "saturday": ["19:00-20:30", "21:00-22:30"]
+      },
+      "profile": {
+        "introduction": "大学受験指導を専門としています。志望校合格に向けて戦略的に指導いたします。",
+        "motto": "志望校合格は通過点。その先の成長を見据えて"
+      },
+      "createdAt": {
+        "seconds": 1710000000,
+        "nanoseconds": 0
+      },
+      "lastLoginAt": {
+        "seconds": 1733100000,
+        "nanoseconds": 0
+      }
+    },
+    "admin_manager": {
+      "uid": "admin_manager",
+      "name": "教室長",
+      "email": "manager@juku-example.com",
+      "role": "管理者",
+      "subjects": ["全科目対応可能"],
+      "grade": "小学1年〜高校3年",
+      "experience": "15年",
+      "qualification": ["塾経営士", "教育カウンセラー"],
+      "responsibilities": ["教室運営", "講師管理", "保護者対応", "カリキュラム作成"],
+      "schedule": {
+        "monday": ["14:00-22:00"],
+        "tuesday": ["14:00-22:00"],
+        "wednesday": ["14:00-22:00"],
+        "thursday": ["14:00-22:00"],
+        "friday": ["14:00-22:00"],
+        "saturday": ["13:00-22:00"],
+        "sunday": ["13:00-18:00"]
+      },
+      "profile": {
+        "introduction": "教室運営全般を担当しています。生徒・保護者・講師の皆さんが安心して学習できる環境作りに努めています。",
+        "motto": "一人ひとりの成長を全力でサポート"
+      },
+      "createdAt": {
+        "seconds": 1690000000,
+        "nanoseconds": 0
+      },
+      "lastLoginAt": {
+        "seconds": 1733129800,
+        "nanoseconds": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "messages": {
+    "msg001": {
+      "text": "【生徒情報】田中太郎くん（中3）の数学進度について\n二次関数の基本は理解できていますが、応用問題でまだ苦戦しています。\n次回の授業では類題演習を重点的にお願いします。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 0,
+      "tag": ["引継ぎ", "生徒名", "担当教師名"],
+      "timestamp": {
+        "seconds": 1733126400,
+        "nanoseconds": 0
+      }
+    },
+    "msg002": {
+      "text": "承知いたしました。田中太郎くんの件ですね。\n二次関数の応用問題のプリントを準備して、段階的に解説します。\nグラフの描き方も復習した方が良いでしょうか？",
+      "publisherName": "佐藤先生",
+      "userID": "teacher_sato",
+      "channelID": 0,
+      "tag": ["引継ぎ", "生徒名"],
+      "timestamp": {
+        "seconds": 1733126700,
+        "nanoseconds": 0
+      }
+    },
+    "msg003": {
+      "text": "はい、グラフの描き方も合わせてお願いします。\n特に頂点の求め方が曖昧になっているようです。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 0,
+      "tag": ["引継ぎ", "生徒名"],
+      "timestamp": {
+        "seconds": 1733126800,
+        "nanoseconds": 0
+      }
+    },
+    "msg004": {
+      "text": "【緊急】明日（12/3）の17:00-18:30の英語の授業、体調不良のため代講をお願いできませんか？\n中学2年生の鈴木花子さんの授業です。現在進行形の復習予定でした。",
+      "publisherName": "山田先生",
+      "userID": "teacher_yamada",
+      "channelID": 1,
+      "tag": ["★★★", "生徒名", "担当教師名"],
+      "expirationDate": "2024-12-03",
+      "timestamp": {
+        "seconds": 1733127000,
+        "nanoseconds": 0
+      }
+    },
+    "msg005": {
+      "text": "代講可能です！鈴木花子さんですね。\n進行形の教材は準備できていますので、そのまま進めさせていただきます。\nお大事になさってください。",
+      "publisherName": "佐藤先生",
+      "userID": "teacher_sato",
+      "channelID": 1,
+      "tag": ["★★", "生徒名"],
+      "timestamp": {
+        "seconds": 1733127200,
+        "nanoseconds": 0
+      }
+    },
+    "msg006": {
+      "text": "ありがとうございます！助かります。\n教材は職員室の私の机の上に置いてあります。\n何かあれば連絡してください。",
+      "publisherName": "山田先生",
+      "userID": "teacher_yamada",
+      "channelID": 1,
+      "tag": ["★★"],
+      "timestamp": {
+        "seconds": 1733127300,
+        "nanoseconds": 0
+      }
+    },
+    "msg007": {
+      "text": "来週のシフト調整についてご相談があります。\n12/9（月）の19:00-20:30の枠で出勤可能な方はいらっしゃいますか？\n高校生の物理の授業です。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 1,
+      "tag": ["★", "担当教師名"],
+      "timestamp": {
+        "seconds": 1733127600,
+        "nanoseconds": 0
+      }
+    },
+    "msg008": {
+      "text": "物理でしたら対応可能です！\n力学の範囲でしょうか？事前に準備したいので教えてください。",
+      "publisherName": "鈴木先生",
+      "userID": "teacher_suzuki",
+      "channelID": 1,
+      "tag": ["★"],
+      "timestamp": {
+        "seconds": 1733127700,
+        "nanoseconds": 0
+      }
+    },
+    "msg009": {
+      "text": "【お知らせ】新しい教材が届きました📚\n・数学：中学3年生用問題集（関数・図形）\n・英語：高校受験対策テキスト\n・理科：実験器具セット\n\n職員室に置いてありますので、必要な方はご利用ください。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 2,
+      "tag": ["お知らせ"],
+      "timestamp": {
+        "seconds": 1733128000,
+        "nanoseconds": 0
+      }
+    },
+    "msg010": {
+      "text": "【保護者面談】高橋一郎くん（中3）のお母様との面談結果をお知らせします。\n\n・志望校：〇〇高校（偏差値60）\n・現在の学力：数学B、英語C、国語B\n・今後の方針：数学と英語を重点的に指導\n・面談満足度：とても満足\n\n担当の先生方、よろしくお願いします。",
+      "publisherName": "山田先生",
+      "userID": "teacher_yamada",
+      "channelID": 0,
+      "tag": ["生徒名", "担当教師名", "★★"],
+      "timestamp": {
+        "seconds": 1733128300,
+        "nanoseconds": 0
+      }
+    },
+    "msg011": {
+      "text": "高橋一郎くんの件、承知いたしました。\n数学の現在の単元はどちらでしょうか？\n受験対策用の教材も準備いたします。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 0,
+      "tag": ["生徒名"],
+      "timestamp": {
+        "seconds": 1733128500,
+        "nanoseconds": 0
+      }
+    },
+    "msg012": {
+      "text": "【会議のお知らせ】12月度講師会議のご案内\n\n日時：12月15日（日）14:00-16:00\n場所：第1会議室\n議題：\n・冬期講習の準備について\n・年末年始のスケジュール調整\n・来年度のカリキュラム検討\n\n出欠確認をお願いします。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 2,
+      "tag": ["お知らせ", "★★"],
+      "expirationDate": "2024-12-15",
+      "timestamp": {
+        "seconds": 1733128800,
+        "nanoseconds": 0
+      }
+    },
+    "msg013": {
+      "text": "出席いたします。\n冬期講習の教材準備について、事前に確認したいことがあります。\n会議前に個別に相談させていただけますか？",
+      "publisherName": "佐藤先生",
+      "userID": "teacher_sato",
+      "channelID": 2,
+      "tag": ["出欠"],
+      "timestamp": {
+        "seconds": 1733129000,
+        "nanoseconds": 0
+      }
+    },
+    "msg014": {
+      "text": "12/4（水）の夜の授業後、急な予定が入ってしまいました😅\n20:30までには終了予定ですが、少し延長の可能性があります。\n申し訳ございません。",
+      "publisherName": "鈴木先生",
+      "userID": "teacher_suzuki",
+      "channelID": 1,
+      "tag": ["出欠"],
+      "expirationDate": "2024-12-04",
+      "timestamp": {
+        "seconds": 1733129200,
+        "nanoseconds": 0
+      }
+    },
+    "msg015": {
+      "text": "【システム更新】生徒管理システムのアップデートが完了しました。\n\n新機能：\n・成績グラフ表示機能\n・宿題進捗トラッキング\n・保護者連絡ツール\n\n詳細なマニュアルは後日配布いたします。",
+      "publisherName": "田中先生",
+      "userID": "teacher_tanaka",
+      "channelID": 2,
+      "tag": ["お知らせ"],
+      "timestamp": {
+        "seconds": 1733129500,
+        "nanoseconds": 0
+      }
+    }
+  }
+}
